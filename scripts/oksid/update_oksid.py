@@ -15,17 +15,22 @@ RETRY_DELAY = (1, 3)  # 1–3 saniye arası bekleme
 BATCH_SIZE = 200      # güvenli olsun diye 200
 
 # --- Global Session & Headers ---
-session = requests.Session()
 session.headers.update({
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/120.0.0.0 Safari/537.36"
     ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
     "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Referer": "https://www.google.com/",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
 })
-
 
 # --- Supabase'e Veri Kaydetme ---
 def save_to_supabase(products):

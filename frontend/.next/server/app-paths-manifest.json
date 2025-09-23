@@ -1,8 +1,4 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/api/job-status/route": "app/api/job-status/route.js",
   "/api/run-scraper/route": "app/api/run-scraper/route.js",
-  "/api/start-job/route": "app/api/start-job/route.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js",
   "/page": "app/page.js"
 }
