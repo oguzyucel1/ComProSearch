@@ -74,15 +74,6 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
-// Validate ../../app/api/update-oksid/route.ts
-{
-  type __IsExpected<Specific extends RouteHandlerConfig<"/api/update-oksid">> = Specific
-  const handler = {} as typeof import("../../app/api/update-oksid/route.js")
-  type __Check = __IsExpected<typeof handler>
-  // @ts-ignore
-  type __Unused = __Check
-}
-
 
 
 
