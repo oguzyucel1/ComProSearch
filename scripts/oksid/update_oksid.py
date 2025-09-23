@@ -12,7 +12,7 @@ BASE_URL = "https://www.oksid.com.tr"
 TIMEOUT = 30
 MAX_RETRIES = 3
 RETRY_DELAY = (1, 3)  # 1–3 saniye arası bekleme
-BATCH_SIZE = 500
+BATCH_SIZE = 200      # güvenli olsun diye 200
 
 # --- Global Session & Headers ---
 session = requests.Session()
@@ -28,15 +28,17 @@ session.headers.update({
 
 
 # --- Supabase'e Veri Kaydetme ---
-def save_to_supabase(products, job_id: str):
+def save_to_supabase(products):
     total = len(products)
     print(f"💾 {total} ürün Supabase'e kaydedilecek...")
 
     for i in range(0, total, BATCH_SIZE):
         batch = products[i:i + BATCH_SIZE]
 
+        # tabloya uygun alanlar
         for p in batch:
-            p["job_id"] = job_id
+            p["marketplace"] = "oksid"
+            p["created_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
 
         try:
             data = supabase.table("oksid_products") \
@@ -44,7 +46,8 @@ def save_to_supabase(products, job_id: str):
                 .execute()
             print(f"✅ Batch {i // BATCH_SIZE + 1}: {len(data.data)} ürün yazıldı")
         except Exception as e:
-            print(f"⚠️ Batch {i // BATCH_SIZE + 1} hata: {e}")
+            import traceback
+            print("❌ Supabase error:", traceback.format_exc())
 
 
 # --- Yardımcı Fonksiyonlar ---
@@ -81,7 +84,7 @@ def clean_price(price_text):
 
 
 # --- Scraper Fonksiyonları ---
-def crawl_product_page(initial_url, category_name, job_id):
+def crawl_product_page(initial_url, category_name):
     current_url = initial_url
     all_products = []
 
@@ -135,7 +138,6 @@ def crawl_product_page(initial_url, category_name, job_id):
                         "currency": currency,
                         "stock": stock,
                         "category": category_name,
-                        "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
                     }
                     all_products.append(product)
                 except Exception as e:
@@ -152,12 +154,12 @@ def crawl_product_page(initial_url, category_name, job_id):
         current_url = urljoin(BASE_URL, href)
 
     if all_products:
-        save_to_supabase(all_products, job_id)
+        save_to_supabase(all_products)
 
     print(f"✅ {category_name} için toplam {len(all_products)} ürün kaydedildi.")
 
 
-def crawl_category(url, job_id, depth=0, visited=None, category_name="Ana Sayfa"):
+def crawl_category(url, depth=0, visited=None, category_name="Ana Sayfa"):
     if visited is None:
         visited = set()
     if url in visited:
@@ -177,13 +179,13 @@ def crawl_category(url, job_id, depth=0, visited=None, category_name="Ana Sayfa"
             if link and not link.startswith("http"):
                 link = BASE_URL + link
             print("  " * depth + f"[CAT] {name} → {link}")
-            crawl_category(link, job_id, depth + 1, visited, name)
+            crawl_category(link, depth + 1, visited, name)
     else:
         print("  " * depth + f"[PRODUCT PAGE] {url}")
-        crawl_product_page(url, category_name, job_id)
+        crawl_product_page(url, category_name)
 
 
-def crawl_from_homepage(job_id: str):
+def crawl_from_homepage():
     print("🚀 Tarama başladı...")
     soup = fetch_html(BASE_URL)
     if not soup:
@@ -196,6 +198,10 @@ def crawl_from_homepage(job_id: str):
         if link and not link.startswith("http"):
             link = BASE_URL + link
         print(f"[TOPCAT] {name} → {link}")
-        crawl_category(link, job_id, depth=1, category_name=name)
+        crawl_category(link, depth=1, category_name=name)
 
     print("✅ Tarama tamamlandı.")
+
+
+if __name__ == "__main__":
+    crawl_from_homepage()
