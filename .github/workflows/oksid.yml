@@ -1,29 +1,36 @@
-name: Run Oksid Scraper
+name: Oksid Scraper
 
 on:
-  workflow_dispatch: # elle veya API'den tetiklenebilir
+  workflow_dispatch:
+    inputs:
+      marketplace:
+        description: "Marketplace adı"
+        required: true
+      job_id:
+        description: "Job ID"
+        required: true
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
       - name: Install dependencies
         run: |
-          cd scripts/oksid
-          pip install --no-cache-dir -r requirements.txt
+          cd scripts
+          pip install -r requirements.txt
 
-      - name: Run Oksid scraper
+      - name: Run scraper
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          python -m scripts.oksid.update_oksid
+          cd scripts
+          python -m oksid.update_oksid "${{ github.event.inputs.job_id }}"
