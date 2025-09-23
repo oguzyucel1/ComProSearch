@@ -175,6 +175,7 @@
 
 @layer theme {
   :root, :host {
+    --color-red-400: #ff6568;
     --color-red-500: #fb2c36;
     --color-orange-600: #f05100;
     --color-orange-700: #c53c00;
@@ -217,6 +218,7 @@
 
   @supports (color: color(display-p3 0 0 0)) {
     :root, :host {
+      --color-red-400: color(display-p3 .933534 .431676 .423491);
       --color-red-500: color(display-p3 .903738 .262579 .253307);
       --color-orange-600: color(display-p3 .887467 .341665 .0219962);
       --color-orange-700: color(display-p3 .729844 .257256 .0511062);
@@ -238,6 +240,7 @@
 
   @supports (color: lab(0% 0 0)) {
     :root, :host {
+      --color-red-400: lab(63.7053% 60.745 31.3109);
       --color-red-500: lab(55.4814% 75.0732 48.8528);
       --color-orange-600: lab(57.1026% 64.2584 89.8886);
       --color-orange-700: lab(46.4615% 57.7275 70.8507);
@@ -615,6 +618,10 @@
     margin-top: calc(var(--spacing) * 2);
   }
 
+  .mt-4 {
+    margin-top: calc(var(--spacing) * 4);
+  }
+
   .mt-6 {
     margin-top: calc(var(--spacing) * 6);
   }
@@ -901,6 +908,10 @@
 
   .text-current {
     color: currentColor;
+  }
+
+  .text-red-400 {
+    color: var(--color-red-400);
   }
 
   .text-slate-50 {

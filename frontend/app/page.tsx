@@ -1,11 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   getCategoriesByStore,
   searchProductsByName,
@@ -17,7 +13,6 @@ import { Category, Product } from "@/lib/supabase";
 export default function ComproAppUI() {
   const [activeMethod, setActiveMethod] = useState("searchByStore");
   const [selectedStore, setSelectedStore] = useState("Bayinet");
-  const [searchMethod, setSearchMethod] = useState("searchByName");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
 
@@ -27,10 +22,8 @@ export default function ComproAppUI() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ✅ Progress bar state
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState<string | null>(null);
+  // ✅ Sadece scraper trigger state
+  const [scraperStatus, setScraperStatus] = useState<string | null>(null);
 
   // Kategorileri yükle
   const loadCategories = async (store: string) => {
@@ -101,56 +94,25 @@ export default function ComproAppUI() {
     }
   };
 
-  // ✅ Oksid güncelle butonu
+  // ✅ Oksid güncelle butonu (GitHub Actions trigger)
   const handleOksidUpdate = async () => {
-    setLoading(true);
+    setScraperStatus("⏳ Scraper tetikleniyor...");
     setError(null);
     try {
-      const response = await fetch("/api/start-job", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ marketplace: "oksid" }),
-      });
-
+      const response = await fetch("/api/run-scraper", { method: "POST" });
       const result = await response.json();
 
-      if (response.ok && result.job) {
-        setJobId(result.job.id);
-        setProgress(0);
-        setStatus("pending");
+      if (response.ok) {
+        setScraperStatus("🚀 Scraper başlatıldı, Supabase güncellenecek!");
       } else {
-        throw new Error(result.error || "Güncelleme başlatılamadı");
+        throw new Error(result.message || "Scraper tetiklenemedi");
       }
     } catch (error) {
       console.error("Oksid güncelleme hatası:", error);
       setError("Oksid güncelleme sırasında hata oluştu.");
-    } finally {
-      setLoading(false);
+      setScraperStatus(null);
     }
   };
-
-  // ✅ Polling ile job durumunu takip et
-  useEffect(() => {
-    if (!jobId) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/job-status?id=${jobId}`);
-        const data = await res.json();
-        if (res.ok && data) {
-          setProgress(data.progress || 0);
-          setStatus(data.status || "pending");
-          if (data.status === "completed" || data.status === "failed") {
-            clearInterval(interval);
-          }
-        }
-      } catch (err) {
-        console.error("Job status fetch hatası:", err);
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [jobId]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black p-8">
@@ -167,26 +129,20 @@ export default function ComproAppUI() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button
               onClick={handleOksidUpdate}
-              disabled={loading}
               className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors shadow-lg"
             >
-              {loading ? "⏳ Güncelleniyor..." : "🔄 Oksid Güncelle"}
+              🔄 Oksid Güncelle
             </Button>
           </div>
 
-          {/* ✅ Progress bar */}
-          {jobId && (
-            <div className="mt-6">
-              <div className="w-full bg-gray-200 rounded h-4">
-                <div
-                  className="bg-green-500 h-4 rounded"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <p className="mt-2 text-white text-center">
-                {status} - {progress}%
-              </p>
-            </div>
+          {/* ✅ Durum mesajı */}
+          {scraperStatus && (
+            <p className="mt-4 text-center text-white">{scraperStatus}</p>
+          )}
+          {error && (
+            <p className="mt-2 text-center text-red-400 font-semibold">
+              {error}
+            </p>
           )}
         </div>
 
