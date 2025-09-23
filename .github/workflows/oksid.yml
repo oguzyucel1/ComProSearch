@@ -32,5 +32,5 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          cd scripts
-          python -m oksid.update_oksid "${{ github.event.inputs.job_id }}"
+          run: python -m scripts.oksid.update_oksid ${{ github.event.inputs.job_id }}
+
