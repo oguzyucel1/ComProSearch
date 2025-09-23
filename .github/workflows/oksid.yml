@@ -1,14 +1,7 @@
 name: Oksid Scraper
 
 on:
-  workflow_dispatch:
-    inputs:
-      marketplace:
-        description: "Marketplace adı"
-        required: true
-      job_id:
-        description: "Job ID"
-        required: true
+  workflow_dispatch: # elle tetikleme
 
 jobs:
   scrape:
@@ -24,13 +17,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd scripts/oksid
-          pip install -r requirements.txt
+          pip install -r scripts/oksid/requirements.txt
+          playwright install --with-deps chromium
 
       - name: Run scraper
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          PYTHONPATH: ${{ github.workspace }}
         run: |
-          python -m scripts.oksid.update_oksid ${{ github.event.inputs.job_id }}
-
+          python -m scripts.oksid.update_oksid

@@ -7,14 +7,13 @@ export async function POST() {
       {
         method: "POST",
         headers: {
-          Authorization: `token ${process.env.GH_TOKEN}`,
+          Authorization: `Bearer ${process.env.GH_TOKEN}`, // ✅ Token env’den
           Accept: "application/vnd.github.v3+json",
         },
         body: JSON.stringify({
-          ref: "main", // branch adın neyse onu yaz
+          ref: "main", // ✅ branch adını buraya yaz (main / master / dev)
           inputs: {
             marketplace: "oksid",
-            job_id: "manual_run", // ✅ required input buraya
           },
         }),
       }
@@ -25,7 +24,9 @@ export async function POST() {
       return NextResponse.json({ message: text }, { status: ghRes.status });
     }
 
-    return NextResponse.json({ message: "Scraper workflow triggered 🚀" });
+    return NextResponse.json({
+      message: "🚀 Scraper workflow triggered, Supabase güncellenecek!",
+    });
   } catch (err: any) {
     return NextResponse.json({ message: err.message }, { status: 500 });
   }
