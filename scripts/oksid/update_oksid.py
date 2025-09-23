@@ -7,10 +7,14 @@ from scripts.shared.supabase_client import supabase
 
 BASE_URL = "https://www.oksid.com.tr"
 
+
+# --- HTML Çekme ---
 def fetch_html(page, url):
     page.goto(url, timeout=60000)
     return BeautifulSoup(page.content(), "html.parser")
 
+
+# --- Fiyat Temizleme ---
 def clean_price(price_text):
     if not price_text:
         return None
@@ -25,14 +29,23 @@ def clean_price(price_text):
     except:
         return None
 
+
+# --- Supabase Kaydetme ---
 def save_to_supabase(products):
     for p in products:
         p["marketplace"] = "oksid"
         p["created_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
 
-    data = supabase.table("oksid_products").upsert(products, on_conflict="url").execute()
-    print(f"✅ {len(data.data)} ürün yazıldı")
+    try:
+        data = supabase.table("oksid_products") \
+            .upsert(products, on_conflict="url") \
+            .execute()
+        print(f"✅ {len(data.data)} ürün yazıldı")
+    except Exception as e:
+        print(f"❌ Supabase error: {e}")
 
+
+# --- Ürün Sayfası ---
 def crawl_product_page(page, url, category_name):
     products = []
     while True:
@@ -99,6 +112,8 @@ def crawl_product_page(page, url, category_name):
         save_to_supabase(products)
         print(f"✅ {category_name} için {len(products)} ürün kaydedildi.")
 
+
+# --- Kategori Tarama ---
 def crawl_category(page, url, category_name="Ana Sayfa", visited=None):
     if visited is None:
         visited = set()
@@ -118,6 +133,8 @@ def crawl_category(page, url, category_name="Ana Sayfa", visited=None):
     else:
         crawl_product_page(page, url, category_name)
 
+
+# --- Ana Fonksiyon ---
 def crawl_from_homepage():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -136,6 +153,7 @@ def crawl_from_homepage():
 
         browser.close()
         print("✅ Tarama tamamlandı.")
+
 
 if __name__ == "__main__":
     crawl_from_homepage()

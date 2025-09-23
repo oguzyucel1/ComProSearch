@@ -64,14 +64,13 @@ async function POST() {
         const ghRes = await fetch("https://api.github.com/repos/oguzyucel1/ComProSearch/actions/workflows/oksid.yml/dispatches", {
             method: "POST",
             headers: {
-                Authorization: `token ${process.env.GH_TOKEN}`,
+                Authorization: `Bearer ${process.env.GH_TOKEN}`,
                 Accept: "application/vnd.github.v3+json"
             },
             body: JSON.stringify({
                 ref: "main",
                 inputs: {
-                    marketplace: "oksid",
-                    job_id: "manual_run"
+                    marketplace: "oksid"
                 }
             })
         });
@@ -84,7 +83,7 @@ async function POST() {
             });
         }
         return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-            message: "Scraper workflow triggered 🚀"
+            message: "🚀 Scraper workflow triggered, Supabase güncellenecek!"
         });
     } catch (err) {
         return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({

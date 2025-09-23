@@ -12,9 +12,6 @@ export async function POST() {
         },
         body: JSON.stringify({
           ref: "main", // ✅ branch adını buraya yaz (main / master / dev)
-          inputs: {
-            marketplace: "oksid",
-          },
         }),
       }
     );
