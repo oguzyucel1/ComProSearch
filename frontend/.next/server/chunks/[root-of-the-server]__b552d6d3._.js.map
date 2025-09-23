@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 3, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"","debugId":null}},
+    {"offset": {"line": 79, "column": 0}, "map": {"version":3,"sources":["file:///Users/oguz/Desktop/ComProSearch/frontend/app/api/job-status/route.ts"],"sourcesContent":["import { createClient } from \"@supabase/supabase-js\";\n\nconst supabase = createClient(\n  process.env.NEXT_PUBLIC_SUPABASE_URL!,\n  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!\n);\n\nexport async function GET(req: Request) {\n  const { searchParams } = new URL(req.url);\n  const id = searchParams.get(\"id\");\n\n  const { data, error } = await supabase\n    .from(\"jobs\")\n    .select(\"*\")\n    .eq(\"id\", id)\n    .single();\n\n  if (error) return new Response(JSON.stringify(error), { status: 500 });\n  return new Response(JSON.stringify(data), { status: 200 });\n}\n"],"names":[],"mappings":";;;;AAAA;;AAEA,MAAM,WAAW,IAAA,yMAAY;AAKtB,eAAe,IAAI,GAAY;IACpC,MAAM,EAAE,YAAY,EAAE,GAAG,IAAI,IAAI,IAAI,GAAG;IACxC,MAAM,KAAK,aAAa,GAAG,CAAC;IAE5B,MAAM,EAAE,IAAI,EAAE,KAAK,EAAE,GAAG,MAAM,SAC3B,IAAI,CAAC,QACL,MAAM,CAAC,KACP,EAAE,CAAC,MAAM,IACT,MAAM;IAET,IAAI,OAAO,OAAO,IAAI,SAAS,KAAK,SAAS,CAAC,QAAQ;QAAE,QAAQ;IAAI;IACpE,OAAO,IAAI,SAAS,KAAK,SAAS,CAAC,OAAO;QAAE,QAAQ;IAAI;AAC1D","debugId":null}}]
+}
