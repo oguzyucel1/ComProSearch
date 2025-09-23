@@ -1,6 +1,7 @@
 {
   "/api/job-status/route": "app/api/job-status/route.js",
   "/api/start-job/route": "app/api/start-job/route.js",
+  "/api/update-oksid/route": "app/api/update-oksid/route.js",
   "/favicon.ico/route": "app/favicon.ico/route.js",
   "/page": "app/page.js"
 }
