@@ -34,4 +34,5 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           JOB_ID: ${{ github.event.inputs.job_id }}
         run: |
+          set -x
           python -m scripts.oksid.update_oksid
