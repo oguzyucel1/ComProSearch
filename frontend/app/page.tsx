@@ -27,7 +27,7 @@ export default function ComproAppUI() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Progress bar state
+  // ✅ Progress bar state
   const [jobId, setJobId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<string | null>(null);
@@ -47,7 +47,6 @@ export default function ComproAppUI() {
     }
   };
 
-  // Mağaza değiştiğinde kategorileri yükle
   useEffect(() => {
     loadCategories(selectedStore);
   }, [selectedStore]);
@@ -74,7 +73,7 @@ export default function ComproAppUI() {
     }
   };
 
-  // Kategori seçimi fonksiyonu
+  // Kategori seçimi
   const handleCategorySelect = async () => {
     if (!selectedCategory) return;
 
@@ -102,19 +101,23 @@ export default function ComproAppUI() {
     }
   };
 
-  // ✅ Oksid güncelle butonu (progress ile)
+  // ✅ Oksid güncelle butonu
   const handleOksidUpdate = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/update-oksid", { method: "POST" });
+      const response = await fetch("/api/start-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ marketplace: "oksid" }),
+      });
+
       const result = await response.json();
 
-      if (response.ok) {
-        alert(
-          "✅ Oksid güncelleme başlatıldı! Progress barı takip edebilirsin."
-        );
-        console.log("Oksid güncelleme:", result);
+      if (response.ok && result.job) {
+        setJobId(result.job.id);
+        setProgress(0);
+        setStatus("pending");
       } else {
         throw new Error(result.error || "Güncelleme başlatılamadı");
       }
@@ -126,12 +129,28 @@ export default function ComproAppUI() {
     }
   };
 
-  // Dummy kategoriler (Bayinet/Denge için)
-  const bayinetCategories = [
-    { id: "01", name: "Bilgisayar Bileşenleri" },
-    { id: "02", name: "Kişisel Bilgisayar" },
-    { id: "10", name: "Ağ Ürünleri" },
-  ];
+  // ✅ Polling ile job durumunu takip et
+  useEffect(() => {
+    if (!jobId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/job-status?id=${jobId}`);
+        const data = await res.json();
+        if (res.ok && data) {
+          setProgress(data.progress || 0);
+          setStatus(data.status || "pending");
+          if (data.status === "completed" || data.status === "failed") {
+            clearInterval(interval);
+          }
+        }
+      } catch (err) {
+        console.error("Job status fetch hatası:", err);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [jobId]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black p-8">
@@ -171,8 +190,7 @@ export default function ComproAppUI() {
           )}
         </div>
 
-        {/* 🔍 Arama Alanı */}
-        {/* ... senin mevcut arama UI kodun buraya devam ediyor */}
+        {/* 🔍 Arama Alanı (senin mevcut kodun devam edecek) */}
       </div>
     </div>
   );

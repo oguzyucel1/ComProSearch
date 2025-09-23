@@ -1,64 +1,59 @@
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // service_role key şart
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // ✅ service role key
 );
 
 export async function POST(req: Request) {
   try {
     const { marketplace } = await req.json();
 
-    // Şimdilik sadece oksid destekleniyor
-    if (marketplace !== "oksid") {
-      return new Response(
-        JSON.stringify({ error: "Şimdilik sadece oksid destekleniyor." }),
-        { status: 400 }
-      );
-    }
-
-    // 1. Supabase'e job ekle
+    // Job ekle
+    // Job ekle
     const { data: job, error } = await supabase
       .from("jobs")
-      .insert({ marketplace, status: "pending", progress: 0 })
+      .insert({ marketplace, status: "pending" })
       .select()
       .single();
 
     if (error) {
-      console.error("Supabase insert error:", error);
-      return new Response(JSON.stringify(error), { status: 500 });
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // 2. GitHub Actions workflow tetikle
+    // 👇 job_id'yi de workflow'a gönder
     const ghRes = await fetch(
       `https://api.github.com/repos/${process.env.GH_REPO}/actions/workflows/oksid.yml/dispatches`,
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${process.env.GH_TOKEN}`,
-          Accept: "application/vnd.github+json",
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           ref: "main",
-          inputs: { job_id: job.id },
+          inputs: {
+            marketplace,
+            job_id: job.id, // ✅ ekledik
+          },
         }),
       }
     );
 
     if (!ghRes.ok) {
-      const err = await ghRes.text();
-      console.error("GitHub API error:", err);
-      return new Response(
-        JSON.stringify({ error: "GitHub Actions tetiklenemedi", details: err }),
+      const details = await ghRes.text(); // 👈 detaylı hata göreceğiz
+      console.error("GitHub Actions hatası:", details);
+      return NextResponse.json(
+        { error: "GitHub Actions tetiklenemedi", details },
         { status: 500 }
       );
     }
 
-    return new Response(JSON.stringify(job), { status: 200 });
+    return NextResponse.json({ success: true, job });
   } catch (err: any) {
-    console.error("start-job error:", err);
-    return new Response(
-      JSON.stringify({ error: "start-job hata", details: err.message }),
+    return NextResponse.json(
+      { error: "Beklenmeyen hata", details: err.message },
       { status: 500 }
     );
   }

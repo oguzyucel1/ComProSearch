@@ -86,11 +86,21 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2
 const supabase = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$module$2f$index$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createClient"])(("TURBOPACK compile-time value", "https://wkavtbgrmwrqjdlaudkp.supabase.co"), ("TURBOPACK compile-time value", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrYXZ0YmdybXdycWpkbGF1ZGtwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MzgxNzYsImV4cCI6MjA3NDExNDE3Nn0.8SWmeMD1eOgsb8l287Blz9WX7P1tl8tor2qd0dNKW-k"));
 async function GET(req) {
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
-    const { data, error } = await supabase.from("jobs").select("*").eq("id", id).single();
-    if (error) return new Response(JSON.stringify(error), {
-        status: 500
-    });
+    const jobId = searchParams.get("id");
+    if (!jobId) {
+        return new Response(JSON.stringify({
+            error: "id gerekli"
+        }), {
+            status: 400
+        });
+    }
+    const { data, error } = await supabase.from("jobs").select("*").eq("id", jobId).single();
+    if (error) {
+        console.error("Supabase job-status error:", error);
+        return new Response(JSON.stringify(error), {
+            status: 500
+        });
+    }
     return new Response(JSON.stringify(data), {
         status: 200
     });

@@ -498,7 +498,7 @@ function ComproAppUI() {
     const [products, setProducts] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
     const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
-    // Progress bar state
+    // ✅ Progress bar state
     const [jobId, setJobId] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [progress, setProgress] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(0);
     const [status, setStatus] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
@@ -516,7 +516,6 @@ function ComproAppUI() {
             setLoading(false);
         }
     };
-    // Mağaza değiştiğinde kategorileri yükle
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "ComproAppUI.useEffect": ()=>{
             loadCategories(selectedStore);
@@ -544,7 +543,7 @@ function ComproAppUI() {
             setLoading(false);
         }
     };
-    // Kategori seçimi fonksiyonu
+    // Kategori seçimi
     const handleCategorySelect = async ()=>{
         if (!selectedCategory) return;
         setLoading(true);
@@ -564,18 +563,25 @@ function ComproAppUI() {
             setLoading(false);
         }
     };
-    // ✅ Oksid güncelle butonu (progress ile)
+    // ✅ Oksid güncelle butonu
     const handleOksidUpdate = async ()=>{
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch("/api/update-oksid", {
-                method: "POST"
+            const response = await fetch("/api/start-job", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    marketplace: "oksid"
+                })
             });
             const result = await response.json();
-            if (response.ok) {
-                alert("✅ Oksid güncelleme başlatıldı! Progress barı takip edebilirsin.");
-                console.log("Oksid güncelleme:", result);
+            if (response.ok && result.job) {
+                setJobId(result.job.id);
+                setProgress(0);
+                setStatus("pending");
             } else {
                 throw new Error(result.error || "Güncelleme başlatılamadı");
             }
@@ -586,21 +592,34 @@ function ComproAppUI() {
             setLoading(false);
         }
     };
-    // Dummy kategoriler (Bayinet/Denge için)
-    const bayinetCategories = [
-        {
-            id: "01",
-            name: "Bilgisayar Bileşenleri"
-        },
-        {
-            id: "02",
-            name: "Kişisel Bilgisayar"
-        },
-        {
-            id: "10",
-            name: "Ağ Ürünleri"
+    // ✅ Polling ile job durumunu takip et
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "ComproAppUI.useEffect": ()=>{
+            if (!jobId) return;
+            const interval = setInterval({
+                "ComproAppUI.useEffect.interval": async ()=>{
+                    try {
+                        const res = await fetch("/api/job-status?id=".concat(jobId));
+                        const data = await res.json();
+                        if (res.ok && data) {
+                            setProgress(data.progress || 0);
+                            setStatus(data.status || "pending");
+                            if (data.status === "completed" || data.status === "failed") {
+                                clearInterval(interval);
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Job status fetch hatası:", err);
+                    }
+                }
+            }["ComproAppUI.useEffect.interval"], 3000);
+            return ({
+                "ComproAppUI.useEffect": ()=>clearInterval(interval)
+            })["ComproAppUI.useEffect"];
         }
-    ];
+    }["ComproAppUI.useEffect"], [
+        jobId
+    ]);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black p-8",
         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -611,7 +630,7 @@ function ComproAppUI() {
                     children: "✨ ComPro Ürün Arama"
                 }, void 0, false, {
                     fileName: "[project]/app/page.tsx",
-                    lineNumber: 139,
+                    lineNumber: 158,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -622,7 +641,7 @@ function ComproAppUI() {
                             children: "🔄 Veritabanı Güncellemeleri"
                         }, void 0, false, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 145,
+                            lineNumber: 164,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -634,12 +653,12 @@ function ComproAppUI() {
                                 children: loading ? "⏳ Güncelleniyor..." : "🔄 Oksid Güncelle"
                             }, void 0, false, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 149,
+                                lineNumber: 168,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 148,
+                            lineNumber: 167,
                             columnNumber: 11
                         }, this),
                         jobId && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -654,12 +673,12 @@ function ComproAppUI() {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 162,
+                                        lineNumber: 181,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 161,
+                                    lineNumber: 180,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -672,34 +691,34 @@ function ComproAppUI() {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 167,
+                                    lineNumber: 186,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 160,
+                            lineNumber: 179,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/page.tsx",
-                    lineNumber: 144,
+                    lineNumber: 163,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/app/page.tsx",
-            lineNumber: 138,
+            lineNumber: 157,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/app/page.tsx",
-        lineNumber: 137,
+        lineNumber: 156,
         columnNumber: 5
     }, this);
 }
-_s(ComproAppUI, "Yv6YasjIKzeMqzjjvYkIONGHIto=");
+_s(ComproAppUI, "8IN36JDXsLPbMnrmgf936Q2TURA=");
 _c = ComproAppUI;
 var _c;
 __turbopack_context__.k.register(_c, "ComproAppUI");

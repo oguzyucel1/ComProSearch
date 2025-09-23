@@ -38,6 +38,18 @@ const mod = __turbopack_context__.x("next/dist/shared/lib/no-fallback-error.exte
 
 module.exports = mod;
 }),
+"[externals]/next/dist/server/app-render/after-task-async-storage.external.js [external] (next/dist/server/app-render/after-task-async-storage.external.js, cjs)", ((__turbopack_context__, module, exports) => {
+
+const mod = __turbopack_context__.x("next/dist/server/app-render/after-task-async-storage.external.js", () => require("next/dist/server/app-render/after-task-async-storage.external.js"));
+
+module.exports = mod;
+}),
+"[externals]/next/dist/server/app-render/action-async-storage.external.js [external] (next/dist/server/app-render/action-async-storage.external.js, cjs)", ((__turbopack_context__, module, exports) => {
+
+const mod = __turbopack_context__.x("next/dist/server/app-render/action-async-storage.external.js", () => require("next/dist/server/app-render/action-async-storage.external.js"));
+
+module.exports = mod;
+}),
 "[externals]/stream [external] (stream, cjs)", ((__turbopack_context__, module, exports) => {
 
 const mod = __turbopack_context__.x("stream", () => require("stream"));
@@ -81,31 +93,33 @@ __turbopack_context__.s([
     "POST",
     ()=>POST
 ]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/server.js [app-route] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$module$2f$index$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/@supabase/supabase-js/dist/module/index.js [app-route] (ecmascript) <locals>");
 ;
-const supabase = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$module$2f$index$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createClient"])(("TURBOPACK compile-time value", "https://wkavtbgrmwrqjdlaudkp.supabase.co"), ("TURBOPACK compile-time value", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrYXZ0YmdybXdycWpkbGF1ZGtwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MzgxNzYsImV4cCI6MjA3NDExNDE3Nn0.8SWmeMD1eOgsb8l287Blz9WX7P1tl8tor2qd0dNKW-k"));
+;
+const supabase = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$module$2f$index$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createClient"])(("TURBOPACK compile-time value", "https://wkavtbgrmwrqjdlaudkp.supabase.co"), process.env.SUPABASE_SERVICE_ROLE_KEY);
 async function POST(req) {
     try {
         const { marketplace } = await req.json();
-        // 1. Job tablosuna kaydet
+        // Job ekle
+        // Job ekle
         const { data: job, error } = await supabase.from("jobs").insert({
             marketplace,
             status: "pending"
         }).select().single();
-        if (error || !job) {
-            return new Response(JSON.stringify({
-                error: "Supabase insert hatası",
-                details: error
-            }), {
+        if (error) {
+            return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                error: error.message
+            }, {
                 status: 500
             });
         }
-        // 2. GitHub Actions workflow tetikle
+        // 👇 job_id'yi de workflow'a gönder
         const ghRes = await fetch(`https://api.github.com/repos/${process.env.GH_REPO}/actions/workflows/oksid.yml/dispatches`, {
             method: "POST",
             headers: {
                 Authorization: `Bearer ${process.env.GH_TOKEN}`,
-                Accept: "application/vnd.github+json"
+                "Content-Type": "application/json"
             },
             body: JSON.stringify({
                 ref: "main",
@@ -116,29 +130,24 @@ async function POST(req) {
             })
         });
         if (!ghRes.ok) {
-            const details = await ghRes.text();
-            return new Response(JSON.stringify({
+            const details = await ghRes.text(); // 👈 detaylı hata göreceğiz
+            console.error("GitHub Actions hatası:", details);
+            return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 error: "GitHub Actions tetiklenemedi",
                 details
-            }), {
+            }, {
                 status: 500
             });
         }
-        // 3. Başarılı dönüş
-        return new Response(JSON.stringify({
+        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
             success: true,
             job
-        }), {
-            status: 200,
-            headers: {
-                "Content-Type": "application/json"
-            }
         });
     } catch (err) {
-        return new Response(JSON.stringify({
+        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
             error: "Beklenmeyen hata",
             details: err.message
-        }), {
+        }, {
             status: 500
         });
     }
@@ -146,4 +155,4 @@ async function POST(req) {
 }),
 ];
 
-//# sourceMappingURL=%5Broot-of-the-server%5D__f9dabeba._.js.map
+//# sourceMappingURL=%5Broot-of-the-server%5D__17206c2d._.js.map
