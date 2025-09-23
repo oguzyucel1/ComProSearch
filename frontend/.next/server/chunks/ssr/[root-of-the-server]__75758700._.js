@@ -584,36 +584,19 @@ function ComproAppUI() {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch("/api/start-job", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    marketplace: "oksid"
-                })
+            const response = await fetch("/api/update-oksid", {
+                method: "POST"
             });
             const result = await response.json();
             if (response.ok) {
-                setJobId(result.id);
-                setStatus(result.status);
-                setProgress(0);
-                // progress poller başlat
-                const interval = setInterval(async ()=>{
-                    const res = await fetch(`/api/job-status?id=${result.id}`);
-                    const job = await res.json();
-                    setProgress(job.progress);
-                    setStatus(job.status);
-                    if (job.status === "done" || job.status === "failed") {
-                        clearInterval(interval);
-                    }
-                }, 2000);
+                alert("✅ Oksid güncelleme başlatıldı! Progress barı takip edebilirsin.");
+                console.log("Oksid güncelleme:", result);
             } else {
                 throw new Error(result.error || "Güncelleme başlatılamadı");
             }
         } catch (error) {
             console.error("Oksid güncelleme hatası:", error);
-            setError("Oksid güncelleme sırasında hata oluştu: " + error.message);
+            setError("Oksid güncelleme sırasında hata oluştu.");
         } finally{
             setLoading(false);
         }
@@ -643,7 +626,7 @@ function ComproAppUI() {
                     children: "✨ ComPro Ürün Arama"
                 }, void 0, false, {
                     fileName: "[project]/app/page.tsx",
-                    lineNumber: 156,
+                    lineNumber: 139,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -654,7 +637,7 @@ function ComproAppUI() {
                             children: "🔄 Veritabanı Güncellemeleri"
                         }, void 0, false, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 162,
+                            lineNumber: 145,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -666,12 +649,12 @@ function ComproAppUI() {
                                 children: loading ? "⏳ Güncelleniyor..." : "🔄 Oksid Güncelle"
                             }, void 0, false, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 166,
+                                lineNumber: 149,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 165,
+                            lineNumber: 148,
                             columnNumber: 11
                         }, this),
                         jobId && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -686,12 +669,12 @@ function ComproAppUI() {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 179,
+                                        lineNumber: 162,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 178,
+                                    lineNumber: 161,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -704,30 +687,30 @@ function ComproAppUI() {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 184,
+                                    lineNumber: 167,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 177,
+                            lineNumber: 160,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/page.tsx",
-                    lineNumber: 161,
+                    lineNumber: 144,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/app/page.tsx",
-            lineNumber: 155,
+            lineNumber: 138,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/app/page.tsx",
-        lineNumber: 154,
+        lineNumber: 137,
         columnNumber: 5
     }, this);
 }

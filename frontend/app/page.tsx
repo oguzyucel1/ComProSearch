@@ -107,37 +107,20 @@ export default function ComproAppUI() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/start-job", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ marketplace: "oksid" }),
-      });
-
+      const response = await fetch("/api/update-oksid", { method: "POST" });
       const result = await response.json();
 
       if (response.ok) {
-        setJobId(result.id);
-        setStatus(result.status);
-        setProgress(0);
-
-        // progress poller başlat
-        const interval = setInterval(async () => {
-          const res = await fetch(`/api/job-status?id=${result.id}`);
-          const job = await res.json();
-          setProgress(job.progress);
-          setStatus(job.status);
-          if (job.status === "done" || job.status === "failed") {
-            clearInterval(interval);
-          }
-        }, 2000);
+        alert(
+          "✅ Oksid güncelleme başlatıldı! Progress barı takip edebilirsin."
+        );
+        console.log("Oksid güncelleme:", result);
       } else {
         throw new Error(result.error || "Güncelleme başlatılamadı");
       }
     } catch (error) {
       console.error("Oksid güncelleme hatası:", error);
-      setError(
-        "Oksid güncelleme sırasında hata oluştu: " + (error as Error).message
-      );
+      setError("Oksid güncelleme sırasında hata oluştu.");
     } finally {
       setLoading(false);
     }
