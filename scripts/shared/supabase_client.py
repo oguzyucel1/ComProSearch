@@ -2,17 +2,15 @@ import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-# scripts klasöründeki .env dosyasını yükle
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ENV_PATH = os.path.join(BASE_DIR, ".env")
+# ✅ Local için .env dosyasını yükle (scripts/.env varsa)
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-load_dotenv(dotenv_path=ENV_PATH)
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# ✅ Ortam değişkenlerini oku
+SUPABASE_URL = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY") or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
-    raise ValueError("❌ Supabase environment değişkenleri eksik. scripts/.env dosyasını kontrol et!")
+    raise ValueError("❌ Supabase environment değişkenleri eksik! Lütfen .env veya Secrets ayarını kontrol et.")
 
-# Supabase client
+# ✅ Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
