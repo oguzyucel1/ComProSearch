@@ -26,5 +26,4 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          cd scripts/oksid
-          python update_oksid.py
+          python -m scripts.oksid.update_oksid
