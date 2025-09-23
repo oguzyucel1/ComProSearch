@@ -1,7 +1,14 @@
 name: Run Oksid Scraper
 
 on:
-  workflow_dispatch: # elle veya API'den tetiklenebilir
+  workflow_dispatch:
+    inputs:
+      marketplace:
+        description: "Hangi pazar yeri"
+        required: true
+      job_id:
+        description: "Supabase jobs tablosundaki ID"
+        required: true
 
 jobs:
   scrape:
