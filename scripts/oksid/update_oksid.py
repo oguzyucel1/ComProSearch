@@ -15,6 +15,7 @@ RETRY_DELAY = (1, 3)  # 1–3 saniye arası bekleme
 BATCH_SIZE = 200      # güvenli olsun diye 200
 
 # --- Global Session & Headers ---
+session = requests.Session()
 session.headers.update({
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
