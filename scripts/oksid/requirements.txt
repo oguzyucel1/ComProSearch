@@ -3,3 +3,4 @@ undetected-chromedriver>=3.5.5
 beautifulsoup4>=4.12.2
 supabase
 requests>=2.31.0
+dotenv
