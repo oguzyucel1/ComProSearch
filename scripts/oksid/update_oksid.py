@@ -13,7 +13,7 @@ BASE_URL = "https://www.oksid.com.tr"
 # --- HTML Çekme ---
 def fetch_html(driver, url):
     driver.get(url)
-    time.sleep(3)  # Cloudflare geçişi için bekleme
+    time.sleep(10)  # Cloudflare geçişi için bekleme
     return BeautifulSoup(driver.page_source, "html.parser")
 
 
