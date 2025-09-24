@@ -145,7 +145,7 @@ def crawl_from_homepage():
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
 
-    driver = uc.Chrome(options=options, headless=False)
+    driver = uc.Chrome(options=options, headless=True)
 
     print("🚀 Tarama başladı...")
     soup = fetch_html(driver, BASE_URL)
