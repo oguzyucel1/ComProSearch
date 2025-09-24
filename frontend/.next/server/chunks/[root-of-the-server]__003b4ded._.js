@@ -68,10 +68,7 @@ async function POST() {
                 Accept: "application/vnd.github.v3+json"
             },
             body: JSON.stringify({
-                ref: "main",
-                inputs: {
-                    marketplace: "oksid"
-                }
+                ref: "main"
             })
         });
         if (!ghRes.ok) {

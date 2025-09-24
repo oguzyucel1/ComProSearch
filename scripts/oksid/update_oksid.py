@@ -2,16 +2,19 @@ import re
 import time
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
+import undetected_chromedriver as uc
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 from scripts.shared.supabase_client import supabase
 
 BASE_URL = "https://www.oksid.com.tr"
 
 
 # --- HTML Çekme ---
-def fetch_html(page, url):
-    page.goto(url, timeout=60000)
-    return BeautifulSoup(page.content(), "html.parser")
+def fetch_html(driver, url):
+    driver.get(url)
+    time.sleep(3)  # Cloudflare geçişi için bekleme
+    return BeautifulSoup(driver.page_source, "html.parser")
 
 
 # --- Fiyat Temizleme ---
@@ -46,10 +49,10 @@ def save_to_supabase(products):
 
 
 # --- Ürün Sayfası ---
-def crawl_product_page(page, url, category_name):
+def crawl_product_page(driver, url, category_name):
     products = []
     while True:
-        soup = fetch_html(page, url)
+        soup = fetch_html(driver, url)
         print(f"➡️ Sayfa: {url}")
 
         product_list_div = soup.select_one("div.colProductIn.shwstock.shwcheck.colPrdList")
@@ -114,45 +117,49 @@ def crawl_product_page(page, url, category_name):
 
 
 # --- Kategori Tarama ---
-def crawl_category(page, url, category_name="Ana Sayfa", visited=None):
+def crawl_category(driver, url, category_name="Ana Sayfa", visited=None):
     if visited is None:
         visited = set()
     if url in visited:
         return
     visited.add(url)
 
-    soup = fetch_html(page, url)
+    soup = fetch_html(driver, url)
 
     subcats = soup.select("div.colProductIn.product45.shwstock.shwcheck.colPrdList a.main-title.ox-url")
     if subcats:
         for a in subcats:
             name = a.get_text(strip=True)
             link = urljoin(BASE_URL, a.get("href"))
-            print(f"[CAT] {name} → {link}")
-            crawl_category(page, link, category_name=name, visited=visited)
+            if name != "Tüm Alt Kategoriler":
+                print(f"[CAT] {name} → {link}")
+                crawl_category(driver, link, category_name=name, visited=visited)
     else:
-        crawl_product_page(page, url, category_name)
+        crawl_product_page(driver, url, category_name)
 
 
 # --- Ana Fonksiyon ---
 def crawl_from_homepage():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
-        page = context.new_page()
+    options = Options()
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
 
-        print("🚀 Tarama başladı...")
-        soup = fetch_html(page, BASE_URL)
+    driver = uc.Chrome(options=options, headless=False)
 
-        topcats = soup.select("div.catsMenu ul.hidden-xs li a")
-        for a in topcats:
-            name = a.get_text(strip=True)
-            link = urljoin(BASE_URL, a.get("href"))
+    print("🚀 Tarama başladı...")
+    soup = fetch_html(driver, BASE_URL)
+
+    topcats = soup.select("div.catsMenu ul.hidden-xs li a")
+    for a in topcats:
+        name = a.get_text(strip=True)
+        link = urljoin(BASE_URL, a.get("href"))
+        if name != "Tüm Alt Kategoriler":
             print(f"[TOPCAT] {name} → {link}")
-            crawl_category(page, link, category_name=name)
+            crawl_category(driver, link, category_name=name)
 
-        browser.close()
-        print("✅ Tarama tamamlandı.")
+    driver.quit()
+    print("✅ Tarama tamamlandı.")
 
 
 if __name__ == "__main__":
