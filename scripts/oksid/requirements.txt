@@ -4,3 +4,4 @@ beautifulsoup4
 regex
 supabase
 python-dateutil
+dotenv
