@@ -1,6 +1,6 @@
-selenium>=4.15.2
-undetected-chromedriver>=3.5.5
-beautifulsoup4>=4.12.2
+urllib3==1.26.15
+cfscrape
+beautifulsoup4
+regex
 supabase
-requests>=2.31.0
-dotenv
+python-dateutil

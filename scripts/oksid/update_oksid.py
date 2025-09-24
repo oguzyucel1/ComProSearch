@@ -2,20 +2,19 @@ import re
 import time
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
-import undetected_chromedriver as uc
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
+import cfscrape
 from scripts.shared.supabase_client import supabase
 
 BASE_URL = "https://www.oksid.com.tr"
 
+# --- Cloudflare Scraper ---
+scraper = cfscrape.create_scraper()
 
 # --- HTML Çekme ---
-def fetch_html(driver, url):
-    driver.get(url)
-    time.sleep(10)  # Cloudflare geçişi için bekleme
-    return BeautifulSoup(driver.page_source, "html.parser")
-
+def fetch_html(url):
+    res = scraper.get(url, timeout=60)
+    res.raise_for_status()
+    return BeautifulSoup(res.text, "html.parser")
 
 # --- Fiyat Temizleme ---
 def clean_price(price_text):
@@ -32,7 +31,6 @@ def clean_price(price_text):
     except:
         return None
 
-
 # --- Supabase Kaydetme ---
 def save_to_supabase(products):
     for p in products:
@@ -47,12 +45,11 @@ def save_to_supabase(products):
     except Exception as e:
         print(f"❌ Supabase error: {e}")
 
-
 # --- Ürün Sayfası ---
-def crawl_product_page(driver, url, category_name):
+def crawl_product_page(url, category_name):
     products = []
     while True:
-        soup = fetch_html(driver, url)
+        soup = fetch_html(url)
         print(f"➡️ Sayfa: {url}")
 
         product_list_div = soup.select_one("div.colProductIn.shwstock.shwcheck.colPrdList")
@@ -115,16 +112,15 @@ def crawl_product_page(driver, url, category_name):
         save_to_supabase(products)
         print(f"✅ {category_name} için {len(products)} ürün kaydedildi.")
 
-
 # --- Kategori Tarama ---
-def crawl_category(driver, url, category_name="Ana Sayfa", visited=None):
+def crawl_category(url, category_name="Ana Sayfa", visited=None):
     if visited is None:
         visited = set()
     if url in visited:
         return
     visited.add(url)
 
-    soup = fetch_html(driver, url)
+    soup = fetch_html(url)
 
     subcats = soup.select("div.colProductIn.product45.shwstock.shwcheck.colPrdList a.main-title.ox-url")
     if subcats:
@@ -133,22 +129,14 @@ def crawl_category(driver, url, category_name="Ana Sayfa", visited=None):
             link = urljoin(BASE_URL, a.get("href"))
             if name != "Tüm Alt Kategoriler":
                 print(f"[CAT] {name} → {link}")
-                crawl_category(driver, link, category_name=name, visited=visited)
+                crawl_category(link, category_name=name, visited=visited)
     else:
-        crawl_product_page(driver, url, category_name)
-
+        crawl_product_page(url, category_name)
 
 # --- Ana Fonksiyon ---
 def crawl_from_homepage():
-    options = Options()
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-
-    driver = uc.Chrome(options=options, headless=True)
-
     print("🚀 Tarama başladı...")
-    soup = fetch_html(driver, BASE_URL)
+    soup = fetch_html(BASE_URL)
 
     topcats = soup.select("div.catsMenu ul.hidden-xs li a")
     for a in topcats:
@@ -156,11 +144,9 @@ def crawl_from_homepage():
         link = urljoin(BASE_URL, a.get("href"))
         if name != "Tüm Alt Kategoriler":
             print(f"[TOPCAT] {name} → {link}")
-            crawl_category(driver, link, category_name=name)
+            crawl_category(link, category_name=name)
 
-    driver.quit()
     print("✅ Tarama tamamlandı.")
-
 
 if __name__ == "__main__":
     crawl_from_homepage()
