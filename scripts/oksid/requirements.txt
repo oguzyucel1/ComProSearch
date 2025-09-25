@@ -8,3 +8,4 @@ dotenv
 httpx
 certifi
 requests
+cloudscraper

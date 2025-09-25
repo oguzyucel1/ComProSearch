@@ -2,13 +2,13 @@ import re
 import time
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
-import cfscrape
+import cloudscraper
 from scripts.shared.supabase_client import supabase
 
 BASE_URL = "https://www.oksid.com.tr"
 
 # --- Cloudflare Scraper ---
-scraper = cfscrape.create_scraper()
+scraper = cloudscraper.create_scraper()  
 
 # --- HTML Çekme ---
 def fetch_html(url):
