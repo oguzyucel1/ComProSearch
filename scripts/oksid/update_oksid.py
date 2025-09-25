@@ -16,7 +16,7 @@ def fetch_html(url):
     print(f"🌍 GET {url} → {res.status_code}, size={len(res.text)} bytes")
 
     # İlk 300 karakteri logla
-    print("🔎 RESPONSE PREVIEW:", res.text[:300])
+    print("🔎 RESPONSE PREVIEW:", res.text[:5000])
 
     return BeautifulSoup(res.text, "html.parser")
 
