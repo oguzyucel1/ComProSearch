@@ -7,18 +7,34 @@ from scripts.shared.supabase_client import supabase
 
 BASE_URL = "https://www.oksid.com.tr"
 
-# --- Cloudflare Scraper ---
-scraper = cloudscraper.create_scraper()  
+# ✅ Cloudscraper client
+scraper = cloudscraper.create_scraper(browser={
+    'browser': 'chrome',
+    'platform': 'windows',
+    'desktop': True
+})
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    )
+}
 
 # --- HTML Çekme ---
-def fetch_html(url):
-    res = scraper.get(url, timeout=60)
-    print(f"🌍 GET {url} → {res.status_code}, size={len(res.text)} bytes")
-
-    # İlk 300 karakteri logla
-    print("🔎 RESPONSE PREVIEW:", res.text[:5000])
-
-    return BeautifulSoup(res.text, "html.parser")
+def fetch_html(url, retries=3, backoff=5):
+    for attempt in range(retries):
+        try:
+            res = scraper.get(url, headers=HEADERS, timeout=180)
+            res.raise_for_status()
+            return BeautifulSoup(res.text, "html.parser")
+        except Exception as e:
+            print(f"⚠️ Hata {e} → retry {attempt+1}/{retries}")
+            if attempt < retries - 1:
+                time.sleep(backoff * (attempt + 1))
+            else:
+                raise
 
 # --- Fiyat Temizleme ---
 def clean_price(price_text):
@@ -36,25 +52,42 @@ def clean_price(price_text):
         return None
 
 # --- Supabase Kaydetme ---
-def save_to_supabase(products):
-    for p in products:
-        p["marketplace"] = "oksid"
-        p["created_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+# --- Supabase Kaydetme ---
+def save_to_supabase(products, category_name, batch_size=50):
+    if not products:
+        return
 
-    try:
-        data = supabase.table("oksid_products") \
-            .upsert(products, on_conflict="url") \
-            .execute()
-        print(f"✅ {len(data.data)} ürün yazıldı")
-    except Exception as e:
-        print(f"❌ Supabase error: {e}")
+    for i in range(0, len(products), batch_size):
+        chunk = products[i:i+batch_size]
+
+        # zorunlu alanları ekle
+        for p in chunk:
+            p["marketplace"] = "oksid"
+            p["created_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+
+        # retry mekanizması
+        for attempt in range(3):
+            try:
+                data = (
+                    supabase.table("oksid_products")
+                    .upsert(chunk, on_conflict="url")
+                    .execute()
+                )
+                print(
+                    f"✅ {category_name} → {len(data.data)} ürün yazıldı "
+                    f"(chunk {i//batch_size+1}/{(len(products)+batch_size-1)//batch_size})"
+                )
+                break
+            except Exception as e:
+                print(f"⚠️ Supabase error (chunk {i//batch_size+1}), retry {attempt+1}/3: {e}")
+                time.sleep(5)
+
 
 # --- Ürün Sayfası ---
 def crawl_product_page(url, category_name):
     products = []
     while True:
         soup = fetch_html(url)
-        print(f"➡️ Sayfa: {url}")
 
         product_list_div = soup.select_one("div.colProductIn.shwstock.shwcheck.colPrdList")
         if not product_list_div:
@@ -101,9 +134,10 @@ def crawl_product_page(url, category_name):
                     "category": category_name,
                 }
                 products.append(product)
-            except Exception as e:
-                print(f"⚠️ Ürün ayrıştırma hatası: {e}")
+            except Exception:
+                continue
 
+        # ➡️ Sonraki sayfa
         next_page = soup.select_one("a.next")
         if not next_page:
             break
@@ -111,31 +145,20 @@ def crawl_product_page(url, category_name):
         if not href or href.startswith("javascript"):
             break
         url = urljoin(BASE_URL, href)
+        time.sleep(2)  # sayfa arası küçük bekleme
 
     if products:
-        save_to_supabase(products)
+        save_to_supabase(products, category_name)
         print(f"✅ {category_name} için {len(products)} ürün kaydedildi.")
 
 # --- Kategori Tarama ---
-def crawl_category(url, category_name="Ana Sayfa", visited=None):
-    if visited is None:
-        visited = set()
-    if url in visited:
-        return
-    visited.add(url)
-
-    soup = fetch_html(url)
-
-    subcats = soup.select("div.colProductIn.product45.shwstock.shwcheck.colPrdList a.main-title.ox-url")
-    if subcats:
-        for a in subcats:
-            name = a.get_text(strip=True)
-            link = urljoin(BASE_URL, a.get("href"))
-            if name != "Tüm Alt Kategoriler":
-                print(f"[CAT] {name} → {link}")
-                crawl_category(link, category_name=name, visited=visited)
-    else:
+def crawl_category(url, category_name="Ana Sayfa"):
+    print(f"📂 Kategori başlıyor: {category_name} → {url}")
+    try:
         crawl_product_page(url, category_name)
+    except Exception as e:
+        print(f"❌ {category_name} hatası: {e}")
+    time.sleep(3)  # kategori arası bekleme
 
 # --- Ana Fonksiyon ---
 def crawl_from_homepage():
@@ -147,10 +170,9 @@ def crawl_from_homepage():
         name = a.get_text(strip=True)
         link = urljoin(BASE_URL, a.get("href"))
         if name != "Tüm Alt Kategoriler":
-            print(f"[TOPCAT] {name} → {link}")
             crawl_category(link, category_name=name)
 
-    print("✅ Tarama tamamlandı.")
+    print("✅ Tüm kategoriler tamamlandı.")
 
 if __name__ == "__main__":
     crawl_from_homepage()
