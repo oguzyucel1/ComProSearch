@@ -13,7 +13,11 @@ scraper = cloudscraper.create_scraper()
 # --- HTML Çekme ---
 def fetch_html(url):
     res = scraper.get(url, timeout=60)
-    res.raise_for_status()
+    print(f"🌍 GET {url} → {res.status_code}, size={len(res.text)} bytes")
+
+    # İlk 300 karakteri logla
+    print("🔎 RESPONSE PREVIEW:", res.text[:300])
+
     return BeautifulSoup(res.text, "html.parser")
 
 # --- Fiyat Temizleme ---
