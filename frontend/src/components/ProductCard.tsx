@@ -1,17 +1,6 @@
 import React, { useState } from "react";
-import { Star, Eye, Heart, ShoppingCart, Check, X } from "lucide-react";
-
-interface Product {
-  id: number;
-  name: string;
-  category: string;
-  price: number;
-  image: string;
-  rating: number;
-  reviews: number;
-  description: string;
-  inStock: boolean;
-}
+import { Eye, Heart, Check, X, ExternalLink } from "lucide-react";
+import type { Product } from "../types";
 
 interface ProductCardProps {
   product: Product;
@@ -25,33 +14,33 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
   const getGradient = () => {
     switch (tabType) {
       case "oksid":
-        return "from-orange-500 to-amber-500";
+        return "from-orange-600 to-amber-600";
       case "penta":
-        return "from-red-500 to-rose-500";
+        return "from-red-600 to-rose-600";
       case "denge":
         return "from-gray-700 to-gray-900";
       default:
-        return "from-blue-500 to-indigo-600";
+        return "from-blue-600 to-indigo-700";
     }
   };
 
   const getBorderColor = () => {
     switch (tabType) {
       case "oksid":
-        return "border-orange-200 hover:border-orange-300";
+        return "border-orange-700 hover:border-orange-500";
       case "penta":
-        return "border-red-200 hover:border-red-300";
+        return "border-red-700 hover:border-red-500";
       case "denge":
-        return "border-gray-200 hover:border-gray-300";
+        return "border-gray-800 hover:border-gray-600";
       default:
-        return "border-blue-200 hover:border-blue-300";
+        return "border-blue-700 hover:border-blue-500";
     }
   };
 
   return (
     <div
-      className={`bg-white/80 backdrop-blur-sm rounded-xl border-2 ${getBorderColor()} p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl group ${
-        !product.inStock ? "opacity-75" : ""
+      className={`bg-gray-900/60 backdrop-blur-md rounded-xl border ${getBorderColor()} p-6 transition-all duration-300 hover:shadow-xl group ${
+        !product.inStock ? "opacity-70" : ""
       }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -59,17 +48,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
       {/* Product Image */}
       <div className="relative mb-4 overflow-hidden rounded-lg">
         <img
-          src={product.image}
+          src={product.image || "https://placehold.co/600x400?text=No+Image"}
           alt={product.name}
           className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-110"
         />
 
         {/* Stock Status Badge */}
         <div
-          className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${
+          className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 backdrop-blur-sm ${
             product.inStock
-              ? "bg-green-100 text-green-800"
-              : "bg-red-100 text-red-800"
+              ? "bg-green-900/60 text-green-300 border border-green-700/50"
+              : "bg-red-900/60 text-red-300 border border-red-700/50"
           }`}
         >
           {product.inStock ? (
@@ -90,13 +79,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
             onClick={() => setIsFavorited(!isFavorited)}
             className={`p-2 rounded-full transition-colors ${
               isFavorited
-                ? "bg-red-500 text-white"
-                : "bg-white/90 text-gray-600 hover:text-red-500"
+                ? "bg-red-600 text-white"
+                : "bg-gray-800/80 text-gray-200 hover:text-red-400"
             }`}
           >
             <Heart className="w-4 h-4" />
           </button>
-          <button className="p-2 bg-white/90 rounded-full text-gray-600 hover:text-blue-500 transition-colors">
+          <button className="p-2 bg-gray-800/80 rounded-full text-gray-200 hover:text-blue-400 transition-colors">
             <Eye className="w-4 h-4" />
           </button>
         </div>
@@ -105,63 +94,58 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
       {/* Product Info */}
       <div className="space-y-3">
         {/* Category */}
-        <span className="text-sm text-gray-500 font-medium">
+        <span className="text-sm text-gray-400 font-medium">
           {product.category}
         </span>
 
         {/* Name */}
-        <h3 className="font-bold text-lg text-gray-900 line-clamp-2">
+        <h3 className="font-bold text-lg text-gray-100 line-clamp-2">
           {product.name}
         </h3>
 
-        {/* Description */}
-        <p className="text-gray-600 text-sm line-clamp-2">
-          {product.description}
-        </p>
-
-        {/* Rating */}
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center">
-            {[...Array(5)].map((_, i) => (
-              <Star
-                key={i}
-                className={`w-4 h-4 ${
-                  i < Math.floor(product.rating)
-                    ? "text-yellow-400 fill-current"
-                    : "text-gray-300"
-                }`}
-              />
-            ))}
-          </div>
-          <span className="text-sm text-gray-600">
-            {product.rating} ({product.reviews} değerlendirme)
-          </span>
-        </div>
+        {/* Link Button */}
 
         {/* Price */}
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-2xl font-bold text-gray-900">
-              ₺
-              {product.price.toLocaleString("tr-TR", {
-                minimumFractionDigits: 2,
-              })}
-            </p>
+            {product.priceText ? (
+              <p className="text-2xl font-bold text-white">
+                {product.priceText}
+              </p>
+            ) : (
+              <p className="text-2xl font-bold text-white">
+                ₺
+                {product.price.toLocaleString("tr-TR", {
+                  minimumFractionDigits: 2,
+                })}
+              </p>
+            )}
           </div>
         </div>
 
         {/* Action Button */}
-        <button
-          disabled={!product.inStock}
-          className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-300 flex items-center justify-center space-x-2 ${
-            product.inStock
-              ? `bg-gradient-to-r ${getGradient()} text-white hover:shadow-lg transform hover:scale-105`
-              : "bg-gray-200 text-gray-500 cursor-not-allowed"
-          }`}
-        >
-          <ShoppingCart className="w-5 h-5" />
-          <span>{product.inStock ? "Sepete Ekle" : "Stok Yok"}</span>
-        </button>
+        {product.url ? (
+          <a
+            href={product.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-300 flex items-center justify-center space-x-2 ${
+              product.inStock
+                ? `bg-gradient-to-r ${getGradient()} text-white hover:shadow-lg`
+                : "bg-gray-800 text-gray-500 cursor-not-allowed pointer-events-none"
+            }`}
+          >
+            <ExternalLink className="w-5 h-5" />
+            <span>{product.inStock ? "Ürüne Git" : "Stok Yok"}</span>
+          </a>
+        ) : (
+          <button
+            disabled
+            className="w-full py-3 px-4 rounded-lg font-medium bg-gray-800 text-gray-500 cursor-not-allowed flex items-center justify-center space-x-2"
+          >
+            <span>Link Mevcut Değil</span>
+          </button>
+        )}
       </div>
     </div>
   );

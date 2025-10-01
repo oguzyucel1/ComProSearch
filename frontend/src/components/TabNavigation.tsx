@@ -1,14 +1,16 @@
-import React from "react";
+import React, { ReactNode } from "react";
 import { Package, Zap, Scale, BarChart3 } from "lucide-react";
 
 interface TabNavigationProps {
   activeTab: string;
   onTabChange: (tab: "oksid" | "penta" | "denge" | "comparison") => void;
+  rightContent?: ReactNode;
 }
 
 const TabNavigation: React.FC<TabNavigationProps> = ({
   activeTab,
   onTabChange,
+  rightContent,
 }) => {
   const tabs = [
     {
@@ -42,34 +44,32 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
   ];
 
   return (
-    <div className="bg-white/60 backdrop-blur-lg border-b border-white/20">
+    <div className="bg-gray-900/60 backdrop-blur border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <nav className="flex space-x-1 py-4">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            const Icon = tab.icon;
+        <div className="flex items-center justify-between py-4 gap-3">
+          <nav className="flex flex-wrap gap-1">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              const Icon = tab.icon;
 
-            return (
-              <button
-                key={tab.id}
-                onClick={() => onTabChange(tab.id as any)}
-                className={`relative flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 ${
-                  isActive
-                    ? `bg-gradient-to-r ${tab.gradient} text-white shadow-lg shadow-${tab.color}-500/25`
-                    : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
-                }`}
-              >
-                <Icon
-                  className={`w-5 h-5 ${isActive ? "animate-pulse" : ""}`}
-                />
-                <span>{tab.name}</span>
-                {isActive && (
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-white/0 via-white/20 to-white/0 animate-shimmer"></div>
-                )}
-              </button>
-            );
-          })}
-        </nav>
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id as any)}
+                  className={`relative flex items-center space-x-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200 ${
+                    isActive
+                      ? `bg-gradient-to-r ${tab.gradient} text-white shadow-lg`
+                      : "text-gray-300 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 ${isActive ? "" : "opacity-90"}`} />
+                  <span>{tab.name}</span>
+                </button>
+              );
+            })}
+          </nav>
+          {rightContent && <div className="shrink-0">{rightContent}</div>}
+        </div>
       </div>
     </div>
   );

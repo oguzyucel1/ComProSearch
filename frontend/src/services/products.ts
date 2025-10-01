@@ -1,0 +1,289 @@
+import { supabase } from "../lib/supabase";
+import type { Product, TabType } from "../types";
+
+// Ortak yardımcı fonksiyon
+function toBoolStock(val: any): boolean {
+  const s = String(val ?? "")
+    .trim()
+    .toLowerCase();
+  if (!s) return true;
+  const falsy = new Set([
+    "0",
+    "false",
+    "no",
+    "hayir",
+    "yok",
+    "out",
+    "stok yok",
+    "yoktur",
+  ]);
+  return !falsy.has(s);
+}
+
+// Bayinet category code mapping
+const BAYINET_CATEGORY_MAP: Record<string, string> = {
+  "01": "Bilgisayar Bileşenleri",
+  "02": "Kişisel Bilgisayar",
+  "03": "Çevre Birimleri",
+  "04": "Baskı Çözümleri",
+  "05": "Kurumsal Ürünler",
+  "07": "Tüketici Elektroniği",
+  "08": "Aksesuar ve Sarf",
+  "09": "Diğer",
+  "10": "Ağ Ürünleri",
+  "11": "Güvenlik Ürünleri",
+  "12": "Taşınabilir Depolama",
+  "15": "Yazılım",
+  "17": "Servis Hizmetleri",
+};
+
+// Helper for Bayinet category mapping
+const resolveBayinetCategory = (code: any): string => {
+  const c = String(code ?? "").trim();
+  if (!c) return "Diğer";
+  const normalizedCode = c.padStart(2, "0");
+  return BAYINET_CATEGORY_MAP[normalizedCode] ?? "Diğer";
+};
+
+const isDigits = (s: string) => /^\d+$/.test(s);
+
+// For Bayinet: keep categories distinct when unknown by appending code.
+const formatBayinetCategoryDisplay = (codeOrLabel: any): string => {
+  const s = String(codeOrLabel ?? "").trim();
+  if (!s) return "Diğer";
+  if (isDigits(s)) {
+    const key = s.padStart(2, "0");
+    const mapped = BAYINET_CATEGORY_MAP[key];
+    return mapped ?? `Diğer (${key})`;
+  }
+  return s;
+};
+
+// 🟢 oksid_products mapper
+const oksidMapper = (row: any): Product => ({
+  id: String(row.id),
+  name: row.name ?? "",
+  category: row.category ?? "Diğer",
+  price: Number(row.price_2 ?? row.price_1 ?? 0),
+  image: "", // oksid’de image yok gibi, boş bırakıyoruz
+  rating: 0,
+  reviews: 0,
+  description: "",
+  inStock: toBoolStock(row.stock),
+  url: row.url ?? undefined,
+  currency: row.currency ?? undefined,
+  priceText: undefined,
+});
+
+// 🟡 bayinet_products mapper
+const bayinetMapper = (row: any): Product => ({
+  id: String(row.product_id ?? row.id ?? ""),
+  name: row.name ?? "",
+  category: formatBayinetCategoryDisplay(
+    row.category_id ?? row.category ?? row.categoryCode
+  ),
+  price: Number(row.price ?? 0),
+  image: "",
+  rating: 0,
+  reviews: 0,
+  description: "",
+  inStock: toBoolStock(row.stock_info),
+  url: row.url ?? undefined,
+  currency: undefined,
+  priceText: row.price_display ?? undefined,
+});
+
+// 🔵 denge_products mapper
+const dengeMapper = (row: any): Product => ({
+  id: String(row.product_id), // denge’de id var ama product_id unique → UI için product_id daha mantıklı
+  name: row.name ?? "",
+  category: row.category ?? "Diğer",
+  price: Number(row.special_price ?? row.list_price ?? 0),
+  image: "",
+  rating: 0,
+  reviews: 0,
+  description: "",
+  inStock: toBoolStock(row.stock_info),
+  url: undefined,
+  currency: row.currency ?? undefined,
+  priceText: row.list_price
+    ? `${row.list_price} ${row.currency ?? ""}`
+    : undefined,
+});
+
+// Tablo–mapper–select eşlemesi
+const TABLES: Record<
+  TabType,
+  { table: string; select: string; mapper: (row: any) => Product } | null
+> = {
+  oksid: {
+    table: "oksid_products",
+    select:
+      "id,name,url,price_1,price_2,currency,stock,category,created_at,marketplace",
+    mapper: oksidMapper,
+  },
+  penta: {
+    table: "bayinet_products",
+    select:
+      "product_id,name,url,category_id,price,price_display,stock_info,last_updated",
+    mapper: bayinetMapper,
+  },
+  denge: {
+    table: "denge_products",
+    select:
+      "id,product_id,name,category,special_price,list_price,currency,stock_info,last_updated,marketplace",
+    mapper: dengeMapper,
+  },
+  comparison: null,
+};
+
+// 🔑 Ana fetch fonksiyonu
+const BAYINET_LABEL_TO_CODE: Record<string, string> = Object.fromEntries(
+  Object.entries(BAYINET_CATEGORY_MAP).map(([code, label]) => [label, code])
+);
+
+function resolvePentaCategoryCodeFromDisplay(
+  display: string | undefined
+): string | null {
+  if (!display || display === "all") return null;
+  const s = String(display).trim();
+  // Exact label match in map
+  const mapped = BAYINET_LABEL_TO_CODE[s];
+  if (mapped) return mapped;
+  // Try to extract code from pattern: Diğer (NN)
+  const m = s.match(/\((\d+)\)$/);
+  if (m && m[1]) return m[1].padStart(2, "0");
+  // If string is just digits assume it's a code
+  if (/^\d+$/.test(s)) return s.padStart(2, "0");
+  return null;
+}
+
+export async function fetchProductsByTab(
+  tab: TabType,
+  page = 1,
+  pageSize = 50,
+  opts?: { search?: string; category?: string; sort?: string }
+): Promise<{ items: Product[]; total: number }> {
+  const cfg = TABLES[tab];
+  if (!cfg) return { items: [], total: 0 };
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  // Primary fetch with exact count and range
+  let query = supabase.from(cfg.table).select(cfg.select, { count: "exact" });
+
+  // Apply filters
+  const search = opts?.search?.trim();
+  const category = opts?.category;
+  const sort = opts?.sort;
+
+  if (search) {
+    query = query.ilike("name", `%${search}%`);
+  }
+  if (category && category !== "all") {
+    if (tab === "penta") {
+      const code = resolvePentaCategoryCodeFromDisplay(category);
+      if (code) query = query.eq("category_id", code);
+    } else if (tab === "oksid" || tab === "denge") {
+      query = query.eq("category", category);
+    }
+  }
+
+  // Apply sorting
+  if (sort === "price-low") {
+    const priceCol =
+      tab === "oksid" ? "price_2" : tab === "penta" ? "price" : "special_price";
+    query = query.order(priceCol, { ascending: true });
+  } else if (sort === "price-high") {
+    const priceCol =
+      tab === "oksid" ? "price_2" : tab === "penta" ? "price" : "special_price";
+    query = query.order(priceCol, { ascending: false });
+  }
+
+  let { data, error, count } = await query.range(from, to);
+
+  // Fallback for Penta/Bayinet in case of column mismatch
+  if (error && tab === "penta") {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "Penta select failed with specific columns, retrying with select('*'):",
+      error.message
+    );
+    let altQuery = supabase.from(cfg.table).select("*", { count: "exact" });
+    if (search) {
+      altQuery = altQuery.ilike("name", `%${search}%`);
+    }
+    if (category && category !== "all") {
+      if (tab === "penta") {
+        const code = resolvePentaCategoryCodeFromDisplay(category);
+        if (code) altQuery = altQuery.eq("category_id", code);
+      } else if (tab === "oksid" || tab === "denge") {
+        altQuery = altQuery.eq("category", category);
+      }
+    }
+    // Apply sorting to fallback (penta only in this block)
+    if (sort === "price-low") {
+      altQuery = altQuery.order("price", { ascending: true });
+    } else if (sort === "price-high") {
+      altQuery = altQuery.order("price", { ascending: false });
+    }
+    const alt = await altQuery.range(from, to);
+    data = alt.data as any[] | null;
+    error = alt.error as any;
+    count = alt.count as number | null;
+  }
+
+  if (error) throw error;
+
+  return { items: (data || []).map(cfg.mapper), total: count ?? 0 };
+}
+
+// 🔎 Kategori listesi: tüm veritabanını sayfalayarak kategorileri toplayıp eşsiz hale getirir
+export async function fetchCategoriesByTab(tab: TabType): Promise<string[]> {
+  const cfg = TABLES[tab];
+  if (!cfg) return [];
+
+  // Hangi kolon?
+  const categoryColumn = tab === "penta" ? "category_id" : "category";
+  const pageSize = 1000;
+  let offset = 0;
+  const set = new Set<string>();
+
+  while (true) {
+    let query = supabase
+      .from(cfg.table)
+      .select(categoryColumn)
+      .range(offset, offset + pageSize - 1);
+
+    let { data, error } = await query;
+
+    if (error && tab === "penta") {
+      // Fallback: tüm kolonlar, sonra uygun alanı seç
+      const alt = await supabase
+        .from(cfg.table)
+        .select("*")
+        .range(offset, offset + pageSize - 1);
+      data = alt.data as any[] | null;
+      error = alt.error as any;
+    }
+
+    if (error) throw error;
+    const rows = (data || []) as any[];
+    for (const r of rows) {
+      const raw = r[categoryColumn] ?? r.category ?? r.categoryCode;
+      if (raw === null || raw === undefined) continue;
+      const value = String(raw).trim();
+      if (!value) continue;
+      // Bayinet: bilinmeyen kodları ayırt etmek için "Diğer (XX)" olarak göster
+      const display =
+        tab === "penta" ? formatBayinetCategoryDisplay(value) : value;
+      set.add(display);
+    }
+
+    if (rows.length < pageSize) break; // son sayfa
+    offset += pageSize;
+  }
+
+  return Array.from(set).sort((a, b) => a.localeCompare(b, "tr"));
+}

@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { ChevronDown, Tag } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { ChevronDown, Tag, Search } from "lucide-react";
 
 interface CategoryDropdownProps {
   categories: string[];
@@ -15,6 +15,7 @@ const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
   tabType,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
 
   const getGradient = () => {
     switch (tabType) {
@@ -32,26 +33,26 @@ const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
   const getBorderColor = () => {
     switch (tabType) {
       case "oksid":
-        return "border-orange-200 focus:border-orange-400";
+        return "border-orange-700 focus:border-orange-500";
       case "penta":
-        return "border-red-200 focus:border-red-400";
+        return "border-red-700 focus:border-red-500";
       case "denge":
-        return "border-gray-300 focus:border-gray-500";
+        return "border-gray-800 focus:border-gray-600";
       default:
-        return "border-blue-200 focus:border-blue-400";
+        return "border-blue-700 focus:border-blue-500";
     }
   };
 
   const getHoverColor = () => {
     switch (tabType) {
       case "oksid":
-        return "hover:bg-orange-50";
+        return "hover:bg-orange-950/20";
       case "penta":
-        return "hover:bg-red-50";
+        return "hover:bg-red-950/20";
       case "denge":
-        return "hover:bg-gray-50";
+        return "hover:bg-gray-900/30";
       default:
-        return "hover:bg-blue-50";
+        return "hover:bg-blue-950/20";
     }
   };
 
@@ -63,14 +64,22 @@ const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
     return category === "all" ? "Tüm Kategoriler" : category;
   };
 
+  const filteredCategories = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return categories;
+    return categories.filter((c) =>
+      getCategoryDisplayName(c).toLowerCase().includes(q)
+    );
+  }, [categories, query]);
+
   return (
     <div className="relative lg:ml-4">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`min-w-[200px] px-6 py-3 bg-white/80 backdrop-blur-sm border-2 ${getBorderColor()} rounded-xl hover:bg-white/90 transition-all duration-200 flex items-center justify-between font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+        className={`min-w-[280px] px-6 py-3 bg-gray-900/60 backdrop-blur-sm border ${getBorderColor()} rounded-xl hover:bg-gray-900/70 transition-all duration-200 flex items-center justify-between font-medium text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600/40 text-base`}
       >
         <div className="flex items-center space-x-2">
-          <Tag className="w-5 h-5 text-gray-500" />
+          <Tag className="w-5 h-5 text-gray-300" />
           <span>{getSelectedDisplayName()}</span>
         </div>
         <ChevronDown
@@ -89,9 +98,23 @@ const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
           />
 
           {/* Dropdown Menu */}
-          <div className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-lg border border-gray-200 rounded-xl shadow-2xl z-20 overflow-hidden animate-slideDown">
-            <div className="py-2">
-              {categories.map((category) => {
+          <div className="absolute top-full left-0 mt-2 w-[360px] h-[380px] bg-gray-900/90 backdrop-blur-lg border border-white/10 rounded-xl shadow-2xl z-20 overflow-hidden animate-slideDown">
+            {/* Search input */}
+            <div className="p-3 border-b border-white/10">
+              <div className="relative">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Kategori ara..."
+                  className="w-full pl-9 pr-3 py-2 rounded-lg bg-gray-800/70 border border-white/10 text-sm text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600/40"
+                />
+              </div>
+            </div>
+
+            {/* Scrollable list */}
+            <div className="py-2 overflow-y-auto h-[calc(380px-56px)]">
+              {filteredCategories.map((category) => {
                 const isSelected = selectedCategory === category;
                 const displayName = getCategoryDisplayName(category);
 
@@ -101,11 +124,12 @@ const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
                     onClick={() => {
                       onCategoryChange(category);
                       setIsOpen(false);
+                      setQuery("");
                     }}
-                    className={`w-full px-4 py-3 text-left transition-all duration-200 flex items-center space-x-3 ${
+                    className={`w-full px-4 py-3 text-left transition-all duration-200 flex items-center space-x-3 whitespace-normal break-words ${
                       isSelected
                         ? `bg-gradient-to-r ${getGradient()} text-white font-medium`
-                        : `text-gray-700 ${getHoverColor()}`
+                        : `text-gray-200 ${getHoverColor()}`
                     }`}
                   >
                     <div
@@ -113,12 +137,12 @@ const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
                         isSelected
                           ? "bg-white"
                           : tabType === "oksid"
-                          ? "bg-orange-400"
+                          ? "bg-orange-500"
                           : tabType === "penta"
-                          ? "bg-red-400"
+                          ? "bg-red-500"
                           : tabType === "denge"
                           ? "bg-gray-400"
-                          : "bg-blue-400"
+                          : "bg-blue-500"
                       }`}
                     />
                     <span>{displayName}</span>

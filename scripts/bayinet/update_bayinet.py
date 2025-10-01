@@ -115,9 +115,43 @@ def scrape_all_pages(page, category_id, max_pages=200):
 
 
 
-# --- Giriş Fonksiyonu (mantık aynen korunuyor) ---
+def get_and_clear_otp(timeout=180, poll_interval=5):
+    """
+    Supabase'den OTP'yi bekleyerek çeker ve veritabanından siler.
+    """
+    start_time = time.time()
+    
+    print(f"⏳ {timeout} saniye boyunca DB'den OTP bekleniyor...")
+
+    while time.time() - start_time < timeout:
+        try:
+            # 1. Kontrol: OTP var mı? (otp_code sütununu oku)
+            response = supabase.table(OTP_TABLE).select("otp_code").limit(1).execute()
+            
+            # response.data, Supabase'den gelen bir liste olmalıdır.
+            if response.data and response.data[0] and response.data[0].get("otp_code"):
+                otp_code = response.data[0]["otp_code"]
+                print(f"✅ OTP bulundu. ({int(time.time() - start_time)} saniye bekleme)")
+
+                # 2. Temizlik: OTP'yi veritabanından hemen sil
+                # OTP'yi sildiğimizden emin olmak için değeri eşleştirerek siliyoruz
+                delete_response = supabase.table(OTP_TABLE).delete().eq("otp_code", otp_code).execute()
+                print(f"🗑️ OTP veritabanından silindi. Silinen satır sayısı: {len(delete_response.data)}")
+
+                return otp_code
+            
+        except Exception as e:
+            # Supabase'e erişim hatası olabilir
+            print(f"⚠️ Supabase OTP sorgu/silme hatası: {e}")
+            
+        # Bekle ve tekrar dene (Polling)
+        time.sleep(poll_interval)
+        
+    # Zaman aşımı
+    raise TimeoutError(f"🚨 OTP {timeout} saniye içinde girilmedi, işlem iptal edildi.")
+
+
 def manual_login_and_get_session(p):
-    import os
     CUSTOMER_CODE = os.getenv("BAYINET_CUSTOMER_CODE")
     EMAIL = os.getenv("BAYINET_EMAIL")
     PASSWORD = os.getenv("BAYINET_PASSWORD")
@@ -125,7 +159,8 @@ def manual_login_and_get_session(p):
     if not all([CUSTOMER_CODE, EMAIL, PASSWORD]):
         raise RuntimeError("🚨 Giriş bilgileri eksik (env BAYINET_CUSTOMER_CODE, EMAIL, PASSWORD)!")
 
-    browser = p.chromium.launch(headless=False, slow_mo=100)
+    # GH Actions'ta çalışırken headless=True olmalı, lokalde False kalabilir
+    browser = p.chromium.launch(headless=True, slow_mo=50) 
     context = browser.new_context()
     page = context.new_page()
     page.goto(f"{BASE_URL}Login")
@@ -145,15 +180,30 @@ def manual_login_and_get_session(p):
     page.wait_for_load_state("networkidle")
     print("➡️ Giriş yapıldı, OTP ekranı bekleniyor...")
 
-    # OTP ekranı
+    # OTP ekranı yüklendiğinde, UI'dan girişi beklemeye başla
     page.wait_for_selector("div.css-1phe0ka input", timeout=120000)
-    otp_code = input("🔑 OTP kodunu gir: ").strip()
+    print("✨ OTP Giriş Ekranı Yüklendi. DB'den kod çekiliyor.")
+
+    # 🔥 BURASI DEĞİŞTİ: DB'den OTP'yi bekle ve çek
+    try:
+        otp_code = get_and_clear_otp(timeout=180, poll_interval=5) # 3 dakika bekle
+    except TimeoutError as e:
+        # Zaman aşımında tarayıcıyı kapat ve hatayı yükselt
+        browser.close()
+        raise e 
+    
+    # OTP'yi Playwright ile giriş alanlarına parse et
     otp_inputs = page.locator("div.css-1phe0ka input")
 
+    if len(otp_code) != otp_inputs.count():
+        print(f"⚠️ Uyarı: DB'den çekilen OTP uzunluğu ({len(otp_code)}) ile input sayısı ({otp_inputs.count()}) uyuşmuyor.")
+    
     for i, digit in enumerate(otp_code):
-        otp_inputs.nth(i).type(digit, delay=50)
+        if i < otp_inputs.count():
+             # Playwright ile her haneyi ilgili input'a yaz
+            otp_inputs.nth(i).fill(digit) 
 
-    print("✅ OTP kodu dolduruldu.")
+    print("✅ OTP kodu Playwright ile dolduruldu.")
 
     # Doğrula
     page.locator("button:has-text('Doğrula')").click()
@@ -172,7 +222,7 @@ def manual_login_and_get_session(p):
 
     return page
 
-# --- Main ---
+
 def run_scraper():
     print("🚀 Bayinet Scraper başlıyor...")
 
@@ -189,3 +239,4 @@ def run_scraper():
 
 if __name__ == "__main__":
     run_scraper()
+
