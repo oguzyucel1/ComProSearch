@@ -120,9 +120,9 @@ def manual_login_and_get_session(p):
         print("✅ Placeholder ile ilk input bulundu.")
 
         # Doldurma işlemleri (.fill() kullanarak)
-        musteri_kodu_input.fill(CUSTOMER_CODE, delay=50) 
-        page.get_by_placeholder("E-Posta veya telefon numarası").first.fill(EMAIL, delay=50) 
-        page.get_by_placeholder("Şifre").first.fill(PASSWORD, delay=50) 
+        musteri_kodu_input.fill(CUSTOMER_CODE) 
+        page.get_by_placeholder("E-Posta veya telefon numarası").first.fill(EMAIL) 
+        page.get_by_placeholder("Şifre").first.fill(PASSWORD) 
 
         print("✅ Giriş bilgileri dolduruldu.")
 
