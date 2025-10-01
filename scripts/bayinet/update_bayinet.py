@@ -113,7 +113,7 @@ def manual_login_and_get_session(p):
     try:
         # 🔥 En güvenilir locator: Placeholder metnine göre bekleme ve doldurma
         # Bu, önceki hataları atlatmalıdır.
-        musteri_kodu_input = page.get_by_placeholder("Kullanıcı Kodu").first
+        musteri_kodu_input = page.get_by_placeholder("Müşteri Kodu").first
 
         # İlk input'un görünmesini beklemek için bunu zorlayabiliriz.
         musteri_kodu_input.wait_for(timeout=20000)
@@ -121,7 +121,7 @@ def manual_login_and_get_session(p):
 
         # Doldurma işlemleri (.fill() kullanarak)
         musteri_kodu_input.fill(CUSTOMER_CODE, delay=50) 
-        page.get_by_placeholder("E-Posta").first.fill(EMAIL, delay=50) 
+        page.get_by_placeholder("E-Posta veya telefon numarası").first.fill(EMAIL, delay=50) 
         page.get_by_placeholder("Şifre").first.fill(PASSWORD, delay=50) 
 
         print("✅ Giriş bilgileri dolduruldu.")
