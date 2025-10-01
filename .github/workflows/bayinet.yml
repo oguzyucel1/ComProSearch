@@ -21,6 +21,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r scripts/bayinet/requirements.txt
 
+      - name: 🌐 Install Playwright Browsers (Chromium)
+        run: |
+          playwright install chromium
+
       - name: Debug Supabase secrets
         run: |
           echo "SUPABASE_URL=$SUPABASE_URL"
