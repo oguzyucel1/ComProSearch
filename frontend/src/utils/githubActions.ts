@@ -1,32 +1,40 @@
-// src/utils/githubActions.ts (Bu dosya, önceki yanıttan alınmıştır)
+// src/utils/githubActions.ts (GÜNCELLENMİŞ VERSİYON)
 
-export const triggerScraperWorkflow = async () => {
+/**
+ * GitHub Actions'ta belirli bir workflow dosyasını uzaktan tetikler.
+ * @param workflowFileName Tetiklenecek workflow dosyasının adı (örn: 'bayinet_scraper.yml')
+ * @param branch Workflow'un çalışacağı dal adı (varsayılan: 'main')
+ */
+export const triggerWorkflow = async (
+  workflowFileName: string,
+  branch: string = "main"
+) => {
   // Env değişkenlerini oku
   const owner = import.meta.env.VITE_GITHUB_OWNER as string;
   const repo = import.meta.env.VITE_GITHUB_REPO as string;
-  const workflowId = import.meta.env.VITE_WORKFLOW_ID as string;
   const token = import.meta.env.VITE_GITHUB_PAT as string;
 
-  if (!owner || !repo || !workflowId || !token) {
+  if (!owner || !repo || !token) {
     throw new Error(
-      "GitHub ENV değişkenleri eksik. Lütfen .env.local'ı kontrol edin."
+      "GitHub ENV değişkenleri eksik. Lütfen VITE_GITHUB_OWNER, VITE_GITHUB_REPO ve VITE_GITHUB_PAT'ı kontrol edin."
     );
   }
 
   // GitHub API endpoint'i
-  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowId}/dispatches`;
+  // workflowId yerine doğrudan parametre olarak gelen dosya adını (workflowFileName) kullanıyoruz
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowFileName}/dispatches`;
+
+  console.log(`Workflow tetikleniyor: ${workflowFileName} (${apiUrl})`);
 
   const response = await fetch(apiUrl, {
     method: "POST",
     headers: {
       Accept: "application/vnd.github.v3+json",
-      // Token'ı "token" ön ekiyle gönder
       Authorization: `token ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      // Workflow'un çalışacağı dal (branch)
-      ref: "main",
+      ref: branch, // Workflow'un çalışacağı dal
     }),
   });
 
@@ -34,13 +42,12 @@ export const triggerScraperWorkflow = async () => {
     // 204 No Content, işlemin başarılı olduğunu gösterir
     return {
       success: true,
-      message:
-        "Workflow başarıyla tetiklendi. Script şimdi login adımına geçiyor.",
+      message: `${workflowFileName} workflow'u başarıyla tetiklendi.`,
     };
   } else {
     const errorData = await response.json();
     throw new Error(
-      `GitHub API Hatası: ${response.status} - ${
+      `GitHub API Hatası (${workflowFileName}): ${response.status} - ${
         errorData.message || "Bilinmeyen Hata"
       }`
     );

@@ -175,7 +175,7 @@ function App() {
               className="inline-flex items-center gap-2 rounded-md border border-green-500 px-4 py-2 text-sm font-semibold text-green-400 transition-colors hover:bg-green-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
             >
               <KeyRound className="size-4" />
-              <span>OTP Giriş</span>
+              <span>Ürün Güncelleme</span>
             </button>
           </div>
         </div>

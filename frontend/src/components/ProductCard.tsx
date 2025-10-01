@@ -40,11 +40,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
   const getDefaultImage = () => {
     switch (tabType) {
       case "oksid":
-        return "/src/public/images/oksid_banner.jpg";
+        return "/images/oksid_banner.jpg";
       case "penta":
-        return "/src/public/images/penta_banner.jpg";
+        return "/images/penta_banner.jpg";
       case "denge":
-        return "/src/public/images/denge_banner.png";
+        return "/images/denge_banner.png";
       default:
         return "https://placehold.co/600x400?text=No+Image";
     }

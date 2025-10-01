@@ -2,44 +2,92 @@
 
 import React, { useState, FormEvent, ChangeEvent } from "react";
 import { supabase } from "../lib/supabase"; // Supabase istemcinizi buradan import edin
-import { triggerScraperWorkflow } from "../utils/githubActions"; // GitHub API tetikleme fonksiyonu
+import { triggerWorkflow } from "../utils/githubActions"; // GitHub API tetikleme fonksiyonu
 
 // Scraper scriptinizdeki tablo adıyla aynı olmalı
 const OTP_TABLE: string = "otp_codes";
 
+// Workflow dosya adlarını tanımlayın
+const BAYINET_WORKFLOW_ID: string = "bayinet.yml";
+const OKSID_WORKFLOW_ID: string = "oksid.yml";
+const DENGE_WORKFLOW_ID: string = "denge.yml";
+
 const OtpInputPage: React.FC = () => {
-  // Durum Yönetimi
-  const [otpCode, setOtpCode] = useState<string>("");
+  // Durum Yönetimi - Her market için ayrı OTP ve Yüklenme Durumu
+
+  // OTP State'leri
+  const [bayinetOtpCode, setBayinetOtpCode] = useState<string>("");
+  const [dengeOtpCode, setDengeOtpCode] = useState<string>("");
+
+  // Global Mesaj State'i
   const [message, setMessage] = useState<string>("");
-  const [isScraperLoading, setIsScraperLoading] = useState<boolean>(false); // Workflow loading (Güncelle butonu)
-  const [isOtpSending, setIsOtpSending] = useState<boolean>(false); // OTP gönderme loading (Kaydet butonu)
 
-  // --- Input Değişikliğini Yönetir ---
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    // Sadece rakamlara ve 6 haneye izin verir
-    const value = e.target.value;
-    if (/^\d*$/.test(value)) {
-      setOtpCode(value.slice(0, 6));
-    }
-  };
+  // Scraper Workflow Yüklenme State'leri (Güncelle Butonu)
+  const [isBayinetScraperLoading, setIsBayinetScraperLoading] =
+    useState<boolean>(false);
+  const [isOksidScraperLoading, setIsOksidScraperLoading] =
+    useState<boolean>(false);
+  const [isDengeScraperLoading, setIsDengeScraperLoading] =
+    useState<boolean>(false);
 
-  // --- GitHub Actions Tetikleme (Güncelle Butonu) ---
-  const handleTriggerScraper = async () => {
+  // OTP Gönderme Yüklenme State'leri (OTP Kaydet Butonu)
+  const [isBayinetOtpSending, setIsBayinetOtpSending] =
+    useState<boolean>(false);
+  const [isDengeOtpSending, setIsDengeOtpSending] = useState<boolean>(false);
+
+  // --- Input Değişikliğini Yönetir (Genelleştirilmiş) ---
+  const handleOtpChange =
+    (setOtpCode: React.Dispatch<React.SetStateAction<string>>) =>
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      // Sadece rakam kabul et ve 6 hane ile sınırla
+      if (/^\d*$/.test(value)) {
+        setOtpCode(value.slice(0, 6));
+      }
+    };
+
+  // --- GitHub Actions Tetikleme (Genelleştirilmiş) ---
+  const handleTriggerWorkflow = async (
+    workflowId: string,
+    marketName: string,
+    requiresOtp: boolean, // OTP gerektirip gerektirmediği
+    setLoading: React.Dispatch<React.SetStateAction<boolean>>,
+    clearOtpCode: React.Dispatch<React.SetStateAction<string>>
+  ) => {
+    // Diğer marketlerin yüklenme durumu kontrol edilmiyor, sadece ilgili marketin
+    // Ancak sadece birinin OTP gönderimdeyken scraper tetiklenmesini engelleyebiliriz (opsiyonel)
+    if (isBayinetOtpSending || isDengeOtpSending) return;
+
     setMessage("");
-    setIsScraperLoading(true);
+    setLoading(true);
+
     try {
-      const result = await triggerScraperWorkflow();
-      setMessage(`✅ ${result.message}`);
+      const result = await triggerWorkflow(workflowId);
+
+      let successMessage = `${marketName} workflow'u başarıyla tetiklendi.`;
+      if (requiresOtp) {
+        successMessage += ` Script şimdi login adımına geçiyor. Lütfen gelen 6 haneli OTP'yi girin.`;
+        // OTP gerekiyorsa, kullanıcı tekrar girmesi için inputu temizle
+        clearOtpCode("");
+      }
+
+      setMessage(`✅ ${successMessage}`);
     } catch (error: any) {
-      console.error("Workflow Tetikleme Hatası:", error);
-      setMessage(`❌ Workflow tetikleme hatası: ${error.message}`);
+      console.error(`[${marketName}] Workflow Tetikleme Hatası:`, error);
+      setMessage(`❌ ${marketName} tetikleme hatası: ${error.message}`);
     } finally {
-      setIsScraperLoading(false);
+      setLoading(false);
     }
   };
 
-  // --- Supabase OTP Gönderme (Kaydet Butonu) ---
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  // --- Supabase OTP Gönderme (Genelleştirilmiş) ---
+  const handleOtpSubmit = async (
+    e: FormEvent<HTMLFormElement>,
+    otpCode: string,
+    marketName: string,
+    setOtpCode: React.Dispatch<React.SetStateAction<string>>,
+    setSending: React.Dispatch<React.SetStateAction<boolean>>
+  ) => {
     e.preventDefault();
     setMessage("");
 
@@ -48,16 +96,16 @@ const OtpInputPage: React.FC = () => {
       return;
     }
 
-    setIsOtpSending(true);
+    setSending(true);
 
     try {
-      // 1. Önce mevcut kayıtları temizle (tek bir kodun kalmasını sağlamak için)
+      // Önceki OTP'leri sil
       await supabase
         .from(OTP_TABLE)
         .delete()
-        .neq("otp_code", "non-existent-code");
+        .neq("otp_code", "non-existent-code"); // Tüm satırları silmenin Supabase yolu
 
-      // 2. Yeni OTP'yi kaydet
+      // Yeni OTP'yi kaydet
       const { error: insertError } = await supabase
         .from(OTP_TABLE)
         .insert([{ otp_code: otpCode }])
@@ -68,21 +116,50 @@ const OtpInputPage: React.FC = () => {
       }
 
       setMessage(
-        `✅ Başarılı! OTP (${otpCode}) veritabanına kaydedildi. Script şimdi devam ediyor...`
+        `✅ Başarılı! ${marketName} OTP (${otpCode}) veritabanına kaydedildi. Script devam ediyor...`
       );
-      setOtpCode(""); // Formu temizle
+      setOtpCode(""); // Başarılı gönderim sonrası inputu temizle
     } catch (error: any) {
-      console.error("Supabase Kayıt Hatası:", error);
+      console.error(`${marketName} Supabase Kayıt Hatası:`, error);
       setMessage(
-        `❌ Kayıt hatası: ${
+        `❌ ${marketName} OTP kayıt hatası: ${
           error.message || "Bilinmeyen bir hata oluştu."
-        } Konsolu kontrol edin.`
+        }`
       );
     } finally {
-      setIsOtpSending(false);
+      setSending(false);
     }
   };
 
+  // --- Yardımcı Tetikleme Fonksiyonları ---
+  const triggerBayinet = () =>
+    handleTriggerWorkflow(
+      BAYINET_WORKFLOW_ID,
+      "Bayinet",
+      true,
+      setIsBayinetScraperLoading,
+      setBayinetOtpCode
+    );
+
+  const triggerOksid = () =>
+    handleTriggerWorkflow(
+      OKSID_WORKFLOW_ID,
+      "Oksid",
+      false, // OTP Gerekli değil
+      setIsOksidScraperLoading,
+      setBayinetOtpCode // Not: OTP gerekmediği için setBayinetOtpCode kullanmanın bir zararı yok ama setDengeOtpCode de kullanılabilirdi. Fonksiyon çağrısının gerektirdiği parametre yapısına uymak için boş bir clear function geçilebilir ancak burada basitleştirme adına mevcut bir state function bırakıldı.
+    );
+
+  const triggerDenge = () =>
+    handleTriggerWorkflow(
+      DENGE_WORKFLOW_ID,
+      "Denge",
+      true,
+      setIsDengeScraperLoading,
+      setDengeOtpCode
+    );
+
+  // --- Render (JSX) ---
   return (
     <div className="max-w-7xl mx-auto mt-8">
       {/* Ana Başlık */}
@@ -91,7 +168,7 @@ const OtpInputPage: React.FC = () => {
           <span className="text-3xl">🔒</span>
         </div>
         <h2 className="text-3xl font-bold text-white mb-2">
-          Scraper Kontrol Paneli
+          Ürün Güncelleme Paneli
         </h2>
         <p className="text-gray-400">
           Marketlerden ürün verilerini güncelleyin
@@ -100,12 +177,12 @@ const OtpInputPage: React.FC = () => {
 
       {/* Grid Layout - 3 Card Yan Yana */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* BAYINET CARD */}
+        {/* BAYINET CARD (OTP GEREKLİ) */}
         <div className="bg-gray-900/60 backdrop-blur-sm rounded-xl border border-red-500/30 overflow-hidden hover:border-red-500/50 transition-all">
           {/* Banner Image */}
           <div className="relative h-32 overflow-hidden">
             <img
-              src="/src/public/images/penta_banner.jpg"
+              src="/images/penta_banner.jpg"
               alt="Penta Banner"
               className="w-full h-full object-cover"
             />
@@ -124,11 +201,12 @@ const OtpInputPage: React.FC = () => {
             </div>
 
             <button
-              onClick={handleTriggerScraper}
-              disabled={isScraperLoading || isOtpSending}
+              onClick={triggerBayinet}
+              // Sadece Bayinet'in kendi loading state'ini kontrol et
+              disabled={isBayinetScraperLoading || isBayinetOtpSending}
               className="w-full py-3 px-4 mb-4 bg-gradient-to-r from-red-600 to-red-700 text-white font-semibold rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg shadow-red-500/30"
             >
-              {isScraperLoading ? (
+              {isBayinetScraperLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                   <span>Başlatılıyor...</span>
@@ -146,23 +224,34 @@ const OtpInputPage: React.FC = () => {
               </p>
             </div>
 
-            {/* OTP Form */}
-            <form onSubmit={handleSubmit} className="space-y-3">
+            {/* Bayinet OTP Form */}
+            <form
+              onSubmit={(e) =>
+                handleOtpSubmit(
+                  e,
+                  bayinetOtpCode,
+                  "Bayinet",
+                  setBayinetOtpCode,
+                  setIsBayinetOtpSending
+                )
+              }
+              className="space-y-3"
+            >
               <input
                 type="text"
-                value={otpCode}
-                onChange={handleInputChange}
+                value={bayinetOtpCode}
+                onChange={handleOtpChange(setBayinetOtpCode)}
                 placeholder="6 Hane OTP"
                 maxLength={6}
-                disabled={isOtpSending}
-                className="w-full px-3 py-3 bg-gray-800/60 border border-white/10 rounded-lg text-center text-xl tracking-widest text-white placeholder-gray-500 focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                disabled={isBayinetOtpSending}
+                className="w-full px-3 py-3 bg-gray-800/60 border border-white/10 rounded-lg text-center text-l tracking-widest text-white placeholder-gray-500 focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               />
               <button
                 type="submit"
-                disabled={isOtpSending || otpCode.length !== 6}
+                disabled={isBayinetOtpSending || bayinetOtpCode.length !== 6}
                 className="w-full py-2.5 px-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               >
-                {isOtpSending ? (
+                {isBayinetOtpSending ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     <span>Gönderiliyor...</span>
@@ -175,12 +264,12 @@ const OtpInputPage: React.FC = () => {
           </div>
         </div>
 
-        {/* OKSİD CARD */}
+        {/* OKSİD CARD (OTP GEREKMİYOR) */}
         <div className="bg-gray-900/60 backdrop-blur-sm rounded-xl border border-orange-500/30 overflow-hidden hover:border-orange-500/50 transition-all">
           {/* Banner Image */}
           <div className="relative h-32 overflow-hidden">
             <img
-              src="/src/public/images/oksid_banner.jpg"
+              src="/images/oksid_banner.jpg"
               alt="Oksid Banner"
               className="w-full h-full object-cover"
             />
@@ -197,13 +286,19 @@ const OtpInputPage: React.FC = () => {
             </div>
 
             <button
-              onClick={() => {
-                setMessage("⚠️ Oksid scraper henüz yapım aşamasında.");
-              }}
-              disabled={isScraperLoading || isOtpSending}
+              onClick={triggerOksid}
+              // Sadece Oksid'in kendi loading state'ini kontrol et
+              disabled={isOksidScraperLoading}
               className="w-full py-3 px-4 mb-4 bg-gradient-to-r from-orange-600 to-orange-700 text-white font-semibold rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg shadow-orange-500/30"
             >
-              <span>GÜNCELLE</span>
+              {isOksidScraperLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>Başlatılıyor...</span>
+                </>
+              ) : (
+                <span>GÜNCELLE</span>
+              )}
             </button>
 
             <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-3">
@@ -214,12 +309,12 @@ const OtpInputPage: React.FC = () => {
           </div>
         </div>
 
-        {/* DENGE CARD */}
-        <div className="bg-gray-900/60 backdrop-blur-sm rounded-xl border border-gray-500/30 overflow-hidden hover:border-gray-500/50 transition-all">
+        {/* DENGE CARD (OTP GEREKLİ) */}
+        <div className="bg-gray-900/60 backdrop-blur-sm rounded-xl border border-red-500/30 overflow-hidden hover:border-red-500/50 transition-all">
           {/* Banner Image */}
           <div className="relative h-32 overflow-hidden">
             <img
-              src="/src/public/images/denge_banner.png"
+              src="/images/denge_banner.png"
               alt="Denge Banner"
               className="w-full h-full object-cover"
             />
@@ -228,28 +323,74 @@ const OtpInputPage: React.FC = () => {
 
           <div className="p-6">
             <div className="text-center mb-6">
-              <div className="w-12 h-12 mx-auto bg-gradient-to-r from-gray-600 to-gray-700 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-gray-500/30">
-                <span className="text-2xl">⚫</span>
+              <div className="w-12 h-12 mx-auto bg-gradient-to-r from-black-600 to-black-700 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-gray-500/30">
+                <span className="text-2xl">⚫️</span>
               </div>
-              <h3 className="text-xl font-bold text-gray-300 mb-1">Denge</h3>
-              <p className="text-sm text-gray-400">Doğrudan güncelleme</p>
+              <h3 className="text-xl font-bold text-gray-400 mb-1">Denge</h3>
+              <p className="text-sm text-gray-400">OTP ile giriş gerekli</p>
             </div>
 
             <button
-              onClick={() => {
-                setMessage("⚠️ Denge scraper henüz yapım aşamasında.");
-              }}
-              disabled={isScraperLoading || isOtpSending}
+              onClick={triggerDenge}
+              // Sadece Denge'nin kendi loading state'ini kontrol et
+              disabled={isDengeScraperLoading || isDengeOtpSending}
               className="w-full py-3 px-4 mb-4 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-semibold rounded-lg hover:from-gray-700 hover:to-gray-800 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg shadow-gray-500/30"
             >
-              <span>GÜNCELLE</span>
+              {isDengeScraperLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>Başlatılıyor...</span>
+                </>
+              ) : (
+                <span>GÜNCELLE</span>
+              )}
             </button>
 
-            <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-3">
-              <p className="text-green-300 text-xs">
-                <strong>Avantaj:</strong> OTP gerektirmez, direkt başlatılır.
+            <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mb-4">
+              <p className="text-blue-300 text-xs">
+                <strong>Adım 1:</strong> Yukarıdaki butona basın.
+                <br />
+                <strong>Adım 2:</strong> Gelen OTP'yi aşağıya girin.
               </p>
             </div>
+
+            {/* Denge OTP Form */}
+            <form
+              onSubmit={(e) =>
+                handleOtpSubmit(
+                  e,
+                  dengeOtpCode,
+                  "Denge",
+                  setDengeOtpCode,
+                  setIsDengeOtpSending
+                )
+              }
+              className="space-y-3"
+            >
+              <input
+                type="text"
+                value={dengeOtpCode}
+                onChange={handleOtpChange(setDengeOtpCode)}
+                placeholder="6 Hane OTP"
+                maxLength={6}
+                disabled={isDengeOtpSending}
+                className="w-full px-3 py-3 bg-gray-800/60 border border-white/10 rounded-lg text-center text-l tracking-widest text-white placeholder-gray-500 focus:ring-2 focus:ring-gray-500 focus:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              />
+              <button
+                type="submit"
+                disabled={isDengeOtpSending || dengeOtpCode.length !== 6}
+                className="w-full py-2.5 px-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                {isDengeOtpSending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Gönderiliyor...</span>
+                  </>
+                ) : (
+                  <span>OTP Kaydet</span>
+                )}
+              </button>
+            </form>
           </div>
         </div>
       </div>
