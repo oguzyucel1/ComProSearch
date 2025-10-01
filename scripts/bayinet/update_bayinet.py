@@ -181,10 +181,29 @@ def scrape_all_pages(page, category_id, max_pages=200):
     for page_num in range(max_pages):
         # search_model aynı kalır
         search_model = {
-            # ... (model içeriği aynı)
+            "SelectedProperties": [],
+            "SelectedPropertyGroups": [],
+            "AllProp": False,
             "PageNumber": page_num,
+            "VisibleProductCount": "36",
+            "SearchTextInProducts": "",
             "Categories": [category_id],
-            # ... (geri kalan model içeriği)
+            "CategoriesLevel4": [],
+            "CategoriesLevel2": [],
+            "Brands": [],
+            "PropertyGroups": [],
+            "Properties": [],
+            "StoragePlace": "2001",
+            "Sorting": "en-dusuk-fiyat",
+            "IsStockOnly": False,
+            "AllStoragePlaces": False,
+            "WithPropertiesAggregation": False,
+            "WithPropertyGroupAggregation": False,
+            "SearchCategoryId": category_id,
+            "MaxPrice": {"Price": 0, "SelectedPrice": 0, "Currency": ""},
+            "MinPrice": {"Price": 0, "SelectedPrice": 0, "Currency": ""},
+            "IsSubscription": "false",
+            "IsN11": False
         }
 
         # URL encoding ve goto işlemi

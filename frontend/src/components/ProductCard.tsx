@@ -37,6 +37,19 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
     }
   };
 
+  const getDefaultImage = () => {
+    switch (tabType) {
+      case "oksid":
+        return "/src/public/images/oksid_banner.jpg";
+      case "penta":
+        return "/src/public/images/penta_banner.jpg";
+      case "denge":
+        return "/src/public/images/denge_banner.png";
+      default:
+        return "https://placehold.co/600x400?text=No+Image";
+    }
+  };
+
   return (
     <div
       className={`bg-gray-900/60 backdrop-blur-md rounded-xl border ${getBorderColor()} p-6 transition-all duration-300 hover:shadow-xl group ${
@@ -48,7 +61,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
       {/* Product Image */}
       <div className="relative mb-4 overflow-hidden rounded-lg">
         <img
-          src={product.image || "https://placehold.co/600x400?text=No+Image"}
+          src={product.image || getDefaultImage()}
           alt={product.name}
           className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-110"
         />

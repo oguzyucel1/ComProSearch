@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Package, RefreshCw, Loader2, Check, KeyRound } from "lucide-react";
+import { Package, KeyRound } from "lucide-react";
 import TabNavigation from "./components/TabNavigation";
 import ProductGrid from "./components/ProductGrid";
 import SearchBar from "./components/SearchBar";
@@ -45,8 +45,6 @@ function App() {
   const [activeTab, setActiveTab] = useState<TabType>("oksid");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [updating, setUpdating] = useState(false);
-  const [justUpdated, setJustUpdated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>(initial);
@@ -55,17 +53,6 @@ function App() {
   const [total, setTotal] = useState(0);
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>("name");
-
-  const handleUpdate = async () => {
-    if (updating) return;
-    setUpdating(true);
-    setJustUpdated(false);
-    // TODO: Replace with real API call per tab
-    await new Promise((r) => setTimeout(r, 1200));
-    setUpdating(false);
-    setJustUpdated(true);
-    setTimeout(() => setJustUpdated(false), 1200);
-  };
 
   useEffect(() => {
     if (activeTab === "comparison") {
@@ -195,39 +182,7 @@ function App() {
       </header>
 
       {/* Tab Navigation */}
-      <TabNavigation
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        rightContent={
-          activeTab !== "comparison" ? (
-            <button
-              onClick={async () => {
-                if (updating) return;
-                await handleUpdate();
-              }}
-              disabled={updating}
-              className={`inline-flex items-center gap-2 rounded-md border border-current px-3 py-2 text-sm font-semibold transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current disabled:opacity-60 disabled:cursor-not-allowed ${TABS[activeTab].accentText}`}
-            >
-              {updating ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  <span>Güncelleniyor…</span>
-                </>
-              ) : justUpdated ? (
-                <>
-                  <Check className="size-4" />
-                  <span>Güncellendi</span>
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="size-4" />
-                  <span>{TABS[activeTab].name} Ürünlerini güncelle</span>
-                </>
-              )}
-            </button>
-          ) : undefined
-        }
-      />
+      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
