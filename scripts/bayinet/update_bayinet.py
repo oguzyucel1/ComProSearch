@@ -164,22 +164,26 @@ def manual_login_and_get_session(p):
     # GH Actions'ta çalıştığınız için headless=True kalmalı
     browser = p.chromium.launch(headless=True, slow_mo=50) 
     context = browser.new_context()
-    page = context.new_page()
-    page.goto(f"{BASE_URL}Login")
-
-    # 🔥 BURASI KRİTİK: AĞ İŞLEMLERİNİN DURMASINI BEKLE
-    # Bu, DOM yüklenirken asenkron olarak oluşturulan MUI bileşenlerinin görünür olması için zaman tanır.
-    page.wait_for_load_state("networkidle", timeout=30000) # 30 saniye verelim
-
-    # print("➡️ Login formu yükleniyor (Ağ boşta)...") 
+   page = context.new_page()
     
-    # 🔥 FORM_CONTROL_SELECTOR'ü artık beklemeyeceğiz. 
-    # Onun yerine, sayfadaki tüm input'ları hedefleyen daha genel bir locator bekleyeceğiz:
+    # page.goto'ya timeout ve load_state parametrelerini ekleyerek daha agresif bir bekleme uygulayın
+    page.goto(
+        f"{BASE_URL}Login", 
+        wait_until="domcontentloaded",  # İlk olarak sadece DOM içeriğinin yüklenmesini bekle
+        timeout=60000                   # Bu adım için bekleme süresini 1 dakikaya çıkar
+    )
+
+    # Bu bekleme artık opsiyonel, ancak ağın durmasını garanti etmek için kalmalı:
+    page.wait_for_load_state("networkidle", timeout=30000) 
+
+    print("➡️ Login formu yükleniyor (Ağ boşta)...") 
+    
+    # Seçiciniz:
     INPUT_SELECTOR = "input" 
     
-    # Sadece ilk input'un sayfada görünmesini bekleyin (daha az spesifik, daha sağlam)
-    # 20 saniyelik bekleme süresini koruyabiliriz.
-    page.wait_for_selector(INPUT_SELECTOR, timeout=20000) 
+    # İlk input'un sayfada görünmesini beklerken:
+    # state='visible' yerine state='attached' deneyerek sadece DOM'a eklenmesini bekleyelim
+    page.wait_for_selector(INPUT_SELECTOR, state='attached', timeout=20000) 
     print("✅ Input selector bulundu.")
 
     # Kod / Mail / Şifre doldurma adımında da locator'ı basitleştiriyoruz:
