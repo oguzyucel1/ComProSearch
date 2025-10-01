@@ -153,6 +153,7 @@ def get_and_clear_otp(timeout=180, poll_interval=5):
 
 
 def manual_login_and_get_session(p):
+    
     CUSTOMER_CODE = os.getenv("BAYINET_CUSTOMER_CODE")
     EMAIL = os.getenv("BAYINET_EMAIL")
     PASSWORD = os.getenv("BAYINET_PASSWORD")
@@ -160,15 +161,22 @@ def manual_login_and_get_session(p):
     if not all([CUSTOMER_CODE, EMAIL, PASSWORD]):
         raise RuntimeError("🚨 Giriş bilgileri eksik (env BAYINET_CUSTOMER_CODE, EMAIL, PASSWORD)!")
 
-    # GH Actions'ta çalışırken headless=True olmalı, lokalde False kalabilir
+    # GH Actions'ta çalıştığınız için headless=True kalmalı
     browser = p.chromium.launch(headless=True, slow_mo=50) 
     context = browser.new_context()
     page = context.new_page()
     page.goto(f"{BASE_URL}Login")
 
-    print("➡️ Login formu yükleniyor...")
+    # 🔥 BURASI KRİTİK: AĞ İŞLEMLERİNİN DURMASINI BEKLE
+    # Bu, DOM yüklenirken asenkron olarak oluşturulan MUI bileşenlerinin görünür olması için zaman tanır.
+    page.wait_for_load_state("networkidle", timeout=30000) # 30 saniye verelim
+
+    print("➡️ Login formu yükleniyor (Ağ boşta)...")
     FORM_CONTROL_SELECTOR = ".MuiFormControl-root.css-10ki1mm"
-    page.wait_for_selector(FORM_CONTROL_SELECTOR, timeout=10000)
+    
+    # Seçiciyi beklerken timeout'u 20 saniyeye çıkarıyoruz
+    page.wait_for_selector(FORM_CONTROL_SELECTOR, timeout=20000) 
+    print("✅ Form selector bulundu.")
 
     # Kod / Mail / Şifre doldur
     page.locator(FORM_CONTROL_SELECTOR).nth(0).locator("input").type(CUSTOMER_CODE, delay=50)
