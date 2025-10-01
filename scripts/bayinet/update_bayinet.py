@@ -171,20 +171,35 @@ def manual_login_and_get_session(p):
     # Bu, DOM yüklenirken asenkron olarak oluşturulan MUI bileşenlerinin görünür olması için zaman tanır.
     page.wait_for_load_state("networkidle", timeout=30000) # 30 saniye verelim
 
-    print("➡️ Login formu yükleniyor (Ağ boşta)...")
-    FORM_CONTROL_SELECTOR = ".MuiFormControl-root.css-10ki1mm"
+    # print("➡️ Login formu yükleniyor (Ağ boşta)...") 
     
-    # Seçiciyi beklerken timeout'u 20 saniyeye çıkarıyoruz
-    page.wait_for_selector(FORM_CONTROL_SELECTOR, timeout=20000) 
-    print("✅ Form selector bulundu.")
+    # 🔥 FORM_CONTROL_SELECTOR'ü artık beklemeyeceğiz. 
+    # Onun yerine, sayfadaki tüm input'ları hedefleyen daha genel bir locator bekleyeceğiz:
+    INPUT_SELECTOR = "input" 
+    
+    # Sadece ilk input'un sayfada görünmesini bekleyin (daha az spesifik, daha sağlam)
+    # 20 saniyelik bekleme süresini koruyabiliriz.
+    page.wait_for_selector(INPUT_SELECTOR, timeout=20000) 
+    print("✅ Input selector bulundu.")
 
-    # Kod / Mail / Şifre doldur
-    page.locator(FORM_CONTROL_SELECTOR).nth(0).locator("input").type(CUSTOMER_CODE, delay=50)
-    page.locator(FORM_CONTROL_SELECTOR).nth(1).locator("input").type(EMAIL, delay=50)
-    page.locator(FORM_CONTROL_SELECTOR).nth(2).locator("input").type(PASSWORD, delay=50)
+    # Kod / Mail / Şifre doldurma adımında da locator'ı basitleştiriyoruz:
+    # Playwright'ta 'locator' ile direkt olarak 'input'ları hedeflemek daha doğru ve kararlıdır.
+    
+    # Tüm input'ları al (Müşteri Kodu, E-posta, Şifre)
+    login_inputs = page.locator(INPUT_SELECTOR) 
+
+    # Müşteri Kodu (0. index)
+    login_inputs.nth(0).fill(CUSTOMER_CODE, delay=50) 
+    
+    # E-posta (1. index)
+    login_inputs.nth(1).fill(EMAIL, delay=50) 
+    
+    # Şifre (2. index)
+    login_inputs.nth(2).fill(PASSWORD, delay=50) 
+    
     print("✅ Giriş bilgileri dolduruldu.")
 
-    # Giriş Yap
+    # Giriş Yap butonuna tıklama adımı aynı kalır
     page.locator("button:has-text('Giriş Yap')").click()
     page.wait_for_load_state("networkidle")
     print("➡️ Giriş yapıldı, OTP ekranı bekleniyor...")
