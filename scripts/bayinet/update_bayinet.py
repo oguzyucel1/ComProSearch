@@ -164,7 +164,7 @@ def manual_login_and_get_session(p):
     # GH Actions'ta çalıştığınız için headless=True kalmalı
     browser = p.chromium.launch(headless=True, slow_mo=50) 
     context = browser.new_context()
-   page = context.new_page()
+    page = context.new_page()
     
     # page.goto'ya timeout ve load_state parametrelerini ekleyerek daha agresif bir bekleme uygulayın
     page.goto(
