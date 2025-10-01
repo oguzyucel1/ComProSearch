@@ -1,6 +1,7 @@
 import time
 import urllib.parse
 import json
+import otp_inputs
 from urllib.parse import urljoin, urlparse, parse_qs
 from playwright.sync_api import sync_playwright
 from scripts.shared.supabase_client import supabase
