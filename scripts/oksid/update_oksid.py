@@ -10,11 +10,23 @@ BASE_URL = "https://www.oksid.com.tr"
 # --- Cloudflare Scraper ---
 scraper = cfscrape.create_scraper()
 
-# --- HTML Çekme ---
-def fetch_html(url):
-    res = scraper.get(url, timeout=60)
-    res.raise_for_status()
-    return BeautifulSoup(res.text, "html.parser")
+def fetch_html(url, retries=3, backoff=5):
+    for attempt in range(retries):
+        try:
+            res = SESSION.get(url, timeout=120, allow_redirects=True)
+            res.raise_for_status()
+
+            # Debug: hangi URL'ye yönlendirme oldu kontrol et
+            if res.url and res.url != url:
+                print(f"⚠️ Yönlendirme (son URL): {res.url}")
+
+            return BeautifulSoup(res.text, "html.parser")
+        except Exception as e:
+            print(f"⚠️ Hata {e} (URL: {url}) → retry {attempt+1}/{retries}")
+            if attempt < retries - 1:
+                time.sleep(backoff * (attempt + 1))
+            else:
+                raise
 
 # --- Fiyat Temizleme ---
 def clean_price(price_text):
