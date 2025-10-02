@@ -19,8 +19,10 @@ const OtpInputPage: React.FC = () => {
   const [bayinetOtpCode, setBayinetOtpCode] = useState<string>("");
   const [dengeOtpCode, setDengeOtpCode] = useState<string>("");
 
-  // Global Mesaj State'i
-  const [message, setMessage] = useState<string>("");
+  // Her market için ayrı mesaj state'leri
+  const [bayinetMessage, setBayinetMessage] = useState<string>("");
+  const [oksidMessage, setOksidMessage] = useState<string>("");
+  const [dengeMessage, setDengeMessage] = useState<string>("");
 
   // Scraper Workflow Yüklenme State'leri (Güncelle Butonu)
   const [isBayinetScraperLoading, setIsBayinetScraperLoading] =
@@ -52,13 +54,14 @@ const OtpInputPage: React.FC = () => {
     marketName: string,
     requiresOtp: boolean, // OTP gerektirip gerektirmediği
     setLoading: React.Dispatch<React.SetStateAction<boolean>>,
-    clearOtpCode: React.Dispatch<React.SetStateAction<string>>
+    clearOtpCode: React.Dispatch<React.SetStateAction<string>>,
+    setMarketMessage: React.Dispatch<React.SetStateAction<string>>
   ) => {
     // Diğer marketlerin yüklenme durumu kontrol edilmiyor, sadece ilgili marketin
     // Ancak sadece birinin OTP gönderimdeyken scraper tetiklenmesini engelleyebiliriz (opsiyonel)
     if (isBayinetOtpSending || isDengeOtpSending) return;
 
-    setMessage("");
+    setMarketMessage("");
     setLoading(true);
 
     try {
@@ -71,10 +74,10 @@ const OtpInputPage: React.FC = () => {
         clearOtpCode("");
       }
 
-      setMessage(`✅ ${successMessage}`);
+      setMarketMessage(`✅ ${successMessage}`);
     } catch (error: any) {
       console.error(`[${marketName}] Workflow Tetikleme Hatası:`, error);
-      setMessage(`❌ ${marketName} tetikleme hatası: ${error.message}`);
+      setMarketMessage(`❌ ${marketName} tetikleme hatası: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -86,13 +89,14 @@ const OtpInputPage: React.FC = () => {
     otpCode: string,
     marketName: string,
     setOtpCode: React.Dispatch<React.SetStateAction<string>>,
-    setSending: React.Dispatch<React.SetStateAction<boolean>>
+    setSending: React.Dispatch<React.SetStateAction<boolean>>,
+    setMarketMessage: React.Dispatch<React.SetStateAction<string>>
   ) => {
     e.preventDefault();
-    setMessage("");
+    setMarketMessage("");
 
     if (otpCode.length !== 6) {
-      setMessage("❌ Hata: Lütfen 6 haneli geçerli bir OTP girin.");
+      setMarketMessage("❌ Hata: Lütfen 6 haneli geçerli bir OTP girin.");
       return;
     }
 
@@ -115,13 +119,13 @@ const OtpInputPage: React.FC = () => {
         throw new Error(insertError.message);
       }
 
-      setMessage(
+      setMarketMessage(
         `✅ Başarılı! ${marketName} OTP (${otpCode}) veritabanına kaydedildi. Script devam ediyor...`
       );
       setOtpCode(""); // Başarılı gönderim sonrası inputu temizle
     } catch (error: any) {
       console.error(`${marketName} Supabase Kayıt Hatası:`, error);
-      setMessage(
+      setMarketMessage(
         `❌ ${marketName} OTP kayıt hatası: ${
           error.message || "Bilinmeyen bir hata oluştu."
         }`
@@ -138,7 +142,8 @@ const OtpInputPage: React.FC = () => {
       "Bayinet",
       true,
       setIsBayinetScraperLoading,
-      setBayinetOtpCode
+      setBayinetOtpCode,
+      setBayinetMessage
     );
 
   const triggerOksid = () =>
@@ -147,7 +152,8 @@ const OtpInputPage: React.FC = () => {
       "Oksid",
       false, // OTP Gerekli değil
       setIsOksidScraperLoading,
-      setBayinetOtpCode // Not: OTP gerekmediği için setBayinetOtpCode kullanmanın bir zararı yok ama setDengeOtpCode de kullanılabilirdi. Fonksiyon çağrısının gerektirdiği parametre yapısına uymak için boş bir clear function geçilebilir ancak burada basitleştirme adına mevcut bir state function bırakıldı.
+      setBayinetOtpCode, // Dummy setter çünkü OTP gerekmiyor
+      setOksidMessage
     );
 
   const triggerDenge = () =>
@@ -156,7 +162,8 @@ const OtpInputPage: React.FC = () => {
       "Denge",
       true,
       setIsDengeScraperLoading,
-      setDengeOtpCode
+      setDengeOtpCode,
+      setDengeMessage
     );
 
   // --- Render (JSX) ---
@@ -232,7 +239,8 @@ const OtpInputPage: React.FC = () => {
                   bayinetOtpCode,
                   "Bayinet",
                   setBayinetOtpCode,
-                  setIsBayinetOtpSending
+                  setIsBayinetOtpSending,
+                  setBayinetMessage
                 )
               }
               className="space-y-3"
@@ -261,6 +269,23 @@ const OtpInputPage: React.FC = () => {
                 )}
               </button>
             </form>
+
+            {/* Bayinet Mesaj Alanı */}
+            {bayinetMessage && (
+              <div className="mt-4">
+                <div
+                  className={`p-3 rounded-lg border text-sm ${
+                    bayinetMessage.startsWith("❌")
+                      ? "bg-red-900/20 border-red-500/50 text-red-300"
+                      : bayinetMessage.startsWith("⚠️")
+                      ? "bg-yellow-900/20 border-yellow-500/50 text-yellow-300"
+                      : "bg-green-900/20 border-green-500/50 text-green-300"
+                  }`}
+                >
+                  <p className="font-medium text-center">{bayinetMessage}</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -306,6 +331,23 @@ const OtpInputPage: React.FC = () => {
                 <strong>Avantaj:</strong> OTP gerektirmez, direkt başlatılır.
               </p>
             </div>
+
+            {/* Oksid Mesaj Alanı */}
+            {oksidMessage && (
+              <div className="mt-4">
+                <div
+                  className={`p-3 rounded-lg border text-sm ${
+                    oksidMessage.startsWith("❌")
+                      ? "bg-red-900/20 border-red-500/50 text-red-300"
+                      : oksidMessage.startsWith("⚠️")
+                      ? "bg-yellow-900/20 border-yellow-500/50 text-yellow-300"
+                      : "bg-green-900/20 border-green-500/50 text-green-300"
+                  }`}
+                >
+                  <p className="font-medium text-center">{oksidMessage}</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -362,7 +404,8 @@ const OtpInputPage: React.FC = () => {
                   dengeOtpCode,
                   "Denge",
                   setDengeOtpCode,
-                  setIsDengeOtpSending
+                  setIsDengeOtpSending,
+                  setDengeMessage
                 )
               }
               className="space-y-3"
@@ -391,26 +434,26 @@ const OtpInputPage: React.FC = () => {
                 )}
               </button>
             </form>
+
+            {/* Denge Mesaj Alanı */}
+            {dengeMessage && (
+              <div className="mt-4">
+                <div
+                  className={`p-3 rounded-lg border text-sm ${
+                    dengeMessage.startsWith("❌")
+                      ? "bg-red-900/20 border-red-500/50 text-red-300"
+                      : dengeMessage.startsWith("⚠️")
+                      ? "bg-yellow-900/20 border-yellow-500/50 text-yellow-300"
+                      : "bg-green-900/20 border-green-500/50 text-green-300"
+                  }`}
+                >
+                  <p className="font-medium text-center">{dengeMessage}</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
-
-      {/* Global Mesaj Alanı */}
-      {message && (
-        <div className="max-w-2xl mx-auto mt-6">
-          <div
-            className={`p-4 rounded-lg border ${
-              message.startsWith("❌")
-                ? "bg-red-900/20 border-red-500/50 text-red-300"
-                : message.startsWith("⚠️")
-                ? "bg-yellow-900/20 border-yellow-500/50 text-yellow-300"
-                : "bg-green-900/20 border-green-500/50 text-green-300"
-            }`}
-          >
-            <p className="font-medium text-center">{message}</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -126,9 +126,9 @@ function App() {
   // If OTP page is active, render it
   if (showOtpPage) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-gray-100">
+      <div className="h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-black text-gray-100 flex flex-col">
         {/* Header */}
-        <header className="bg-gray-900/60 backdrop-blur border-b border-white/10 sticky top-0 z-50">
+        <header className="bg-gray-900/60 backdrop-blur border-b border-white/10 z-50 flex-shrink-0">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center space-x-3">
@@ -149,8 +149,10 @@ function App() {
             </div>
           </div>
         </header>
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <OtpInputPage />
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <OtpInputPage />
+          </div>
         </main>
       </div>
     );
