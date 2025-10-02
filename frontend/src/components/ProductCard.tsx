@@ -127,10 +127,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
               </p>
             ) : (
               <p className="text-2xl font-bold text-white">
-                ₺
                 {product.price.toLocaleString("tr-TR", {
                   minimumFractionDigits: 2,
-                })}
+                })}{" "}
+                {product.currency || "₺"}
               </p>
             )}
           </div>

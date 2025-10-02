@@ -23,3 +23,14 @@ export type Product = BaseProduct & Partial<ExtraProductFields>;
 
 // Tab enum
 export type TabType = "oksid" | "penta" | "denge" | "comparison";
+
+
+// Dosya Yolu: src/types.ts
+
+export interface ShoppingResult {
+  title: string;
+  link: string;
+  price: string;
+  imageUrl: string;
+  rating?: number;
+}
