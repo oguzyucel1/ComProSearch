@@ -1,126 +1,54 @@
-import re
-import time
 import os
+import time
+import re
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 import requests
-import cfscrape
 from scripts.shared.supabase_client import supabase
 
-# ---------- CONFIG ----------
 BASE_URL = "https://www.oksid.com.tr"
+SCRAPERAPI_KEY = os.environ.get("SCRAPERAPI_KEY")  # set in GH Actions secrets
 
-# Proxy from uploaded JSON (fallback/default). You can override by env PROXY_URL
-# Uploaded file showed: ip=254.201.138.0, port=55227 -> we'll use that as default proxy
-DEFAULT_PROXY = "http://193.31.117.184:80"
-PROXY_URL = os.environ.get("PROXY_URL", DEFAULT_PROXY)
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Connection": "keep-alive",
+    "Referer": "https://www.google.com/",
+}
 
-# Timeout settings
 REQUEST_TIMEOUT = 30
-PROXY_TIMEOUT = 20
 
-# Create cfscrape scraper for fallback
-scraper = cfscrape.create_scraper()
-
-# ---------- Helpers ----------
-def print_redirect_info(resp):
-    if resp.history:
-        print(f"⚠️ Yönlendirme tespit edildi ({len(resp.history)} adım):")
-        for i, h in enumerate(resp.history, start=1):
-            try:
-                print(f"   {i}. {h.status_code} → {h.url}")
-            except Exception:
-                print(f"   {i}. {h.status_code} → (url parse error)")
-        print(f"   🔚 Son URL: {resp.url}")
-    else:
-        print(f"✅ Yönlendirme yok, final URL: {resp.url}")
+def fetch_via_scraperapi(url, country_code="tr", timeout=60):
+    """Fetch a URL through ScraperAPI (api_key via env). Returns requests.Response"""
+    if not SCRAPERAPI_KEY:
+        raise RuntimeError("SCRAPERAPI_KEY not set in environment")
+    params = {
+        "api_key": SCRAPERAPI_KEY,
+        "url": url,
+        "country_code": country_code,  # ensure TR exit
+        "render": "false"  # optionally true if need JS rendering
+    }
+    resp = requests.get("http://api.scraperapi.com", params=params, headers=HEADERS, timeout=timeout)
+    resp.raise_for_status()
+    return resp
 
 def is_unwanted_final_url(final_url):
-    """Aboutus gibi yönlendirmeleri istenmeyen sayfa olarak işaretle."""
     if not final_url:
         return True
-    # Basit kontrol: aboutus, maintenance, en alt domain vb.
     lowered = final_url.lower()
     if "aboutus.oksid" in lowered or "maintenance" in lowered:
         return True
     return False
 
-# ---------- Proxy-first fetch ----------
-def fetch_html_with_proxy(url, proxy_url=PROXY_URL, timeout=PROXY_TIMEOUT):
-    """
-    Proxy üzerinden doğrudan requests ile dene.
-    Eğer proxy auth gerekiyorsa PROXY_URL ortam değişkenine "http://user:pass@ip:port" formatında ver.
-    """
-    if not proxy_url:
-        print("⚠️ PROXY_URL tanımlı değil, proxy ile deneme atlandı.")
-        return None
+def soup_from_response(resp):
+    return BeautifulSoup(resp.text, "html.parser")
 
-    proxies = {
-        "http": proxy_url,
-        "https": proxy_url,
-    }
-
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/120.0.0.0 Safari/537.36"
-        ),
-        "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Connection": "keep-alive",
-        "Referer": "https://www.google.com/",
-        "Host": "www.oksid.com.tr",
-    }
-
-    try:
-        print(f"🌍 Proxy ile deneme: {proxy_url} -> {url}")
-        resp = requests.get(url, headers=headers, proxies=proxies, timeout=timeout, allow_redirects=True, verify=True)
-        print("HTTP status:", resp.status_code)
-        print_redirect_info(resp)
-
-        # Eğer final URL istenmeyen bir sayfaysa proxy geçerli sayılmasın
-        if is_unwanted_final_url(resp.url):
-            print("❌ Proxy ile gelen final URL istenmeyen bir sayfa (aboutus/maintenance). Proxy başarısız sayıldı.")
-            return None
-
-        resp.raise_for_status()
-        return BeautifulSoup(resp.text, "html.parser")
-    except Exception as e:
-        print(f"🔻 Proxy fetch hatası: {e}")
-        return None
-
-# ---------- Fallback fetch using cfscrape ----------
-def fetch_html_with_scraper(url):
-    try:
-        print(f"🔁 cfscrape fallback ile deneme -> {url}")
-        resp = scraper.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
-        print("HTTP status:", resp.status_code)
-        print_redirect_info(resp)
-
-        # Eğer final URL istenmeyen bir sayfaysa bunu da başarısız say
-        if is_unwanted_final_url(resp.url):
-            print("❌ cfscrape ile gelen final URL istenmeyen bir sayfa (aboutus/maintenance).")
-            return None
-
-        resp.raise_for_status()
-        return BeautifulSoup(resp.text, "html.parser")
-    except Exception as e:
-        print(f"🔻 cfscrape fetch hatası: {e}")
-        return None
-
-# ---------- Unified fetch_html (proxy first, then fallback) ----------
-def fetch_html(url):
-    # İlk önce proxy ile dene
-    soup = fetch_html_with_proxy(url)
-    if soup:
-        return soup
-
-    # Proxy başarısızsa veya unwanted redirect döndüyse fallback
-    soup = fetch_html_with_scraper(url)
-    return soup
-
-# ---------- The rest of your scraper (with small improvements) ----------
+# --- Clean price helper (same as before) ---
 def clean_price(price_text):
     if not price_text:
         return None
@@ -135,25 +63,103 @@ def clean_price(price_text):
     except:
         return None
 
+# --- Save to supabase (unchanged) ---
 def save_to_supabase(products):
+    if not products or not supabase:
+        return
     for p in products:
         p["marketplace"] = "oksid"
         p["created_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
-
     try:
-        data = supabase.table("oksid_products") \
-            .upsert(products, on_conflict="url") \
-            .execute()
+        data = supabase.table("oksid_products").upsert(products, on_conflict="url").execute()
         print(f"✅ {len(data.data)} ürün yazıldı")
     except Exception as e:
         print(f"❌ Supabase error: {e}")
 
-def crawl_product_page(url, category_name):
-    products = []
-    while True:
-        soup = fetch_html(url)
-        print(f"➡️ Sayfa: {url}")
+# ---------- Hybrid fetch flow ----------
+def get_homepage_and_start_session():
+    """
+    1) Get homepage via ScraperAPI (TR exit).
+    2) Create a normal requests.Session for subsequent requests.
+    3) Transfer cookies from ScraperAPI response into the session (best-effort).
+    Returns: (soup_homepage, session)
+    """
+    print("🔐 Fetching homepage via ScraperAPI (TR exit)...")
+    resp = fetch_via_scraperapi(BASE_URL)
+    print("Status:", resp.status_code, "Final URL:", resp.url)
+    if is_unwanted_final_url(resp.url):
+        raise RuntimeError(f"Homepage returned unwanted final URL: {resp.url}")
 
+    soup = soup_from_response(resp)
+
+    # Create a session for non-proxied requests
+    sess = requests.Session()
+    sess.headers.update(HEADERS)
+
+    # Transfer cookies from the ScraperAPI response into the session (best-effort).
+    # Note: ScraperAPI may or may not expose exact same cookie semantics; do best-effort.
+    try:
+        for c in resp.cookies:
+            # requests.cookies.Cookie has attributes .name and .value
+            sess.cookies.set(c.name, c.value, domain=c.domain if getattr(c, "domain", None) else None)
+        print("🔁 Cookies transferred from ScraperAPI response to session (best-effort).")
+    except Exception as e:
+        print("⚠️ Cookie transfer failed:", e)
+
+    return soup, sess
+
+def fetch_via_session(sess, url, timeout=REQUEST_TIMEOUT):
+    """
+    Use the provided session to fetch url without proxy.
+    Returns soup or None on failure/unwanted redirect.
+    """
+    try:
+        print(f"➡️ Session fetch: {url}")
+        resp = sess.get(url, timeout=timeout, allow_redirects=True)
+        print("Status:", resp.status_code, "Final URL:", resp.url)
+        if is_unwanted_final_url(resp.url):
+            print("❌ Session fetch returned unwanted final URL (geo/maintenance).")
+            return None
+        resp.raise_for_status()
+        return soup_from_response(resp)
+    except Exception as e:
+        print("🔻 Session fetch error:", e)
+        return None
+
+def fetch_with_hybrid(sess, url):
+    """
+    Try session fetch first (fast). If session fails OR returns unwanted redirect,
+    fallback to fetching that specific URL via ScraperAPI (consumes credit).
+    """
+    # Try session first
+    soup = fetch_via_session(sess, url)
+    if soup:
+        return soup
+
+    # Fallback to ScraperAPI for this URL
+    try:
+        print(f"🔁 Fallback: using ScraperAPI for {url}")
+        resp = fetch_via_scraperapi(url)
+        print("Status:", resp.status_code, "Final URL:", resp.url)
+        if is_unwanted_final_url(resp.url):
+            print("❌ ScraperAPI fallback also returned unwanted final URL.")
+            return None
+        return soup_from_response(resp)
+    except Exception as e:
+        print("🔻 ScraperAPI fallback failed:", e)
+        return None
+
+# ---------- Crawler (uses hybrid fetch) ----------
+def crawl_product_page(soup_getter, start_url, category_name, sess):
+    """
+    soup_getter: function that takes (sess, url) and returns BeautifulSoup (we'll use fetch_with_hybrid)
+    sess: the session for normal fetches
+    """
+    products = []
+    url = start_url
+    while True:
+        soup = soup_getter(sess, url)
+        print(f"➡️ Crawling page: {url}")
         if not soup:
             print(f"❌ {url} için içerik alınamadı, atlanıyor.")
             break
@@ -207,6 +213,7 @@ def crawl_product_page(url, category_name):
             except Exception as e:
                 print(f"⚠️ Ürün ayrıştırma hatası: {e}")
 
+        # next page
         next_page = soup.select_one("a.next")
         if not next_page:
             break
@@ -214,47 +221,25 @@ def crawl_product_page(url, category_name):
         if not href or href.startswith("javascript"):
             break
         url = urljoin(BASE_URL, href)
+        time.sleep(1)
 
     if products:
         save_to_supabase(products)
         print(f"✅ {category_name} için {len(products)} ürün kaydedildi.")
 
-def crawl_category(url, category_name="Ana Sayfa", visited=None):
-    if visited is None:
-        visited = set()
-    if url in visited:
-        return
-    visited.add(url)
-
-    soup = fetch_html(url)
-    if not soup:
-        print(f"⚠️ {url} çekilemedi, alt kategori taraması atlandı.")
+def crawl_from_homepage_hybrid():
+    print("🚀 Tarama başladı (hybrid: homepage via ScraperAPI, then session)...")
+    try:
+        homepage_soup, session = get_homepage_and_start_session()
+    except Exception as e:
+        print("❌ Homepage fetch failed:", e)
         return
 
-    subcats = soup.select("div.colProductIn.product45.shwstock.shwcheck.colPrdList a.main-title.ox-url")
-    if subcats:
-        for a in subcats:
-            name = a.get_text(strip=True)
-            link = urljoin(BASE_URL, a.get("href"))
-            if name != "Tüm Alt Kategoriler":
-                print(f"[CAT] {name} → {link}")
-                crawl_category(link, category_name=name, visited=visited)
-    else:
-        crawl_product_page(url, category_name)
-
-def crawl_from_homepage():
-    print("🚀 Tarama başladı...")
-    soup = fetch_html(BASE_URL)
-
-    if not soup:
-        print("❌ Ana sayfa çekilemedi. Tarama durduruldu.")
-        return
-
-    topcats = soup.select("div.catsMenu ul.hidden-xs li a")
+    # find top categories from homepage
+    topcats = homepage_soup.select("div.catsMenu ul.hidden-xs li a")
     if not topcats:
         print("⚠️ Ana sayfada kategori menüsü bulunamadı. Sayfa içeriğini kontrol et.")
-        # debug snippet
-        print("Sayfa başlığı:", soup.title.string if soup.title else "(başlık yok)")
+        print("Sayfa başlığı:", homepage_soup.title.string if homepage_soup.title else "(başlık yok)")
         return
 
     for a in topcats:
@@ -262,12 +247,12 @@ def crawl_from_homepage():
         link = urljoin(BASE_URL, a.get("href"))
         if name != "Tüm Alt Kategoriler":
             print(f"[TOPCAT] {name} → {link}")
-            crawl_category(link, category_name=name)
+            # Use hybrid fetch for category & products: session first, then ScraperAPI fallback if needed
+            crawl_product_page(fetch_with_hybrid, link, category_name=name, sess=session)
 
     print("✅ Tarama tamamlandı.")
 
-# ---------- Run ----------
 if __name__ == "__main__":
-    # LOG: hangi proxy kullanılıyor
-    print("⤴️ PROXY_URL:", PROXY_URL if PROXY_URL else "(yok)")
-    crawl_from_homepage()
+    # require SCRAPERAPI_KEY in env for this hybrid approach
+    print("SCRAPERAPI_KEY present:", bool(SCRAPERAPI_KEY))
+    crawl_from_homepage_hybrid()
