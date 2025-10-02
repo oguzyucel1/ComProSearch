@@ -12,7 +12,7 @@ BASE_URL = "https://www.oksid.com.tr"
 
 # Proxy from uploaded JSON (fallback/default). You can override by env PROXY_URL
 # Uploaded file showed: ip=254.201.138.0, port=55227 -> we'll use that as default proxy
-DEFAULT_PROXY = "http://254.201.138.0:55227"
+DEFAULT_PROXY = "http://213.142.156.97:80"
 PROXY_URL = os.environ.get("PROXY_URL", DEFAULT_PROXY)
 
 # Timeout settings
