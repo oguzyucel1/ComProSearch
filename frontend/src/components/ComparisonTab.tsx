@@ -313,7 +313,7 @@ const ComparisonTab: React.FC = () => {
               )}
             </div>
             <div className="space-y-4">
-              <div className="bg-gradient-to-r from-red-600 to-red-600 rounded-lg p-4 text-center">
+              <div className="bg-gradient-to-r from-orange-600 to-orange-600 rounded-lg p-4 text-center">
                 <h3 className="text-xl font-bold text-white">
                   Penta ({results.penta.length})
                 </h3>
@@ -322,7 +322,7 @@ const ComparisonTab: React.FC = () => {
                 results.penta.map((product, idx) => (
                   <div
                     key={idx}
-                    className="bg-gray-900/60 backdrop-blur-sm rounded-lg border border-red-500/30 p-4 hover:border-red-500/50 transition-all"
+                    className="bg-gray-900/60 backdrop-blur-sm rounded-lg border border-orange-500/30 p-4 hover:border-red-500/50 transition-all"
                   >
                     <div className="flex items-start justify-between mb-2 gap-2">
                       <h4 className="font-medium text-gray-100 line-clamp-2 flex-1">

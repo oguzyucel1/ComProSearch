@@ -104,12 +104,62 @@ const dengeMapper = (row: any): Product => ({
   reviews: 0,
   description: "",
   inStock: toBoolStock(row.stock_info),
-  url: undefined,
+  url: row.url ?? undefined,
   currency: row.currency ?? undefined,
   priceText: row.list_price
     ? `${row.list_price} ${row.currency ?? ""}`
     : undefined,
 });
+
+// Fetch last updated date for a specific marketplace
+export async function fetchLastUpdatedDate(tabType: TabType): Promise<string | null> {
+  const tableConfig = TABLES[tabType];
+  if (!tableConfig) return null;
+
+  try {
+    // Use the correct column names for each marketplace
+    let timestampColumn = "created_at"; // default fallback
+    
+    if (tabType === "denge") {
+      timestampColumn = "last_updated";
+    } else if (tabType === "oksid") {
+      timestampColumn = "created_at";
+    } else if (tabType === "penta") {
+      timestampColumn = "last_updated";
+    }
+
+    const { data, error } = await supabase
+      .from(tableConfig.table)
+      .select(timestampColumn)
+      .order(timestampColumn, { ascending: false })
+      .limit(1);
+
+    if (error) {
+      console.error(`Error fetching last updated date for ${tabType}:`, error);
+      return null;
+    }
+
+    if (!data || data.length === 0) return null;
+
+    const row = data[0] as Record<string, any>;
+    if (!row) return null;
+
+    const lastDate = row[timestampColumn];
+    if (!lastDate) return null;
+
+    // Format the date to Turkish locale
+    return new Date(lastDate).toLocaleDateString("tr-TR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch (error) {
+    console.error(`Unexpected error fetching last updated date for ${tabType}:`, error);
+    return null;
+  }
+}
 
 // Tablo–mapper–select eşlemesi
 const TABLES: Record<
@@ -131,7 +181,7 @@ const TABLES: Record<
   denge: {
     table: "denge_products",
     select:
-      "id,product_id,name,category,special_price,list_price,currency,stock_info,last_updated,marketplace",
+      "id,product_id,name,category,special_price,list_price,currency,stock_info,last_updated,marketplace,url",
     mapper: dengeMapper,
   },
   comparison: null,

@@ -32,7 +32,7 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
       name: "Denge",
       icon: Scale,
       color: "gray",
-      gradient: "from-gray-700 to-gray-900",
+      gradient: "from-gray-400 to-gray-600",
     },
     {
       id: "comparison",
@@ -47,7 +47,7 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
     <div className="bg-gray-900/60 backdrop-blur border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between py-4 gap-3">
-          <nav className="flex flex-wrap gap-1">
+          <nav className="flex flex-wrap gap-4">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               const Icon = tab.icon;
@@ -56,14 +56,44 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
                 <button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id as any)}
-                  className={`relative flex items-center space-x-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200 ${
+                  className={`group relative flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 ${
                     isActive
-                      ? `bg-gradient-to-r ${tab.gradient} text-white shadow-lg`
-                      : "text-gray-300 hover:text-white hover:bg-white/5"
+                      ? `bg-gradient-to-r ${tab.gradient} text-white shadow-xl shadow-black/20 ring-2 ring-white/20`
+                      : "text-gray-300 hover:text-white hover:bg-gradient-to-r hover:from-white/10 hover:to-white/5 backdrop-blur-sm border border-white/10 hover:border-white/20"
                   }`}
                 >
-                  <Icon className={`w-5 h-5 ${isActive ? "" : "opacity-90"}`} />
-                  <span>{tab.name}</span>
+                  {/* Active tab glow effect */}
+                  {isActive && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-xl animate-pulse"></div>
+                  )}
+
+                  {/* Icon with enhanced animations */}
+                  <Icon
+                    className={`w-5 h-5 transition-all duration-300 ${
+                      isActive
+                        ? "drop-shadow-lg animate-pulse"
+                        : "opacity-80 group-hover:opacity-100 group-hover:rotate-12 group-hover:scale-110"
+                    }`}
+                  />
+
+                  {/* Text with gradient effect on hover */}
+                  <span
+                    className={`relative transition-all duration-300 ${
+                      isActive
+                        ? "font-semibold"
+                        : `group-hover:bg-gradient-to-r ${
+                            tab.id === "oksid"
+                              ? "group-hover:from-orange-400 group-hover:to-amber-400"
+                              : tab.id === "penta"
+                              ? "group-hover:from-red-400 group-hover:to-rose-400"
+                              : tab.id === "denge"
+                              ? "group-hover:from-gray-300 group-hover:to-gray-500"
+                              : "group-hover:from-blue-400 group-hover:to-purple-400"
+                          } group-hover:bg-clip-text group-hover:text-transparent`
+                    }`}
+                  >
+                    {tab.name}
+                  </span>
                 </button>
               );
             })}

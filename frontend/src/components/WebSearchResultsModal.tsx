@@ -31,18 +31,19 @@ const WebSearchResultsModal: React.FC<WebSearchResultsModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
+        <div className="flex items-center justify-between p-6 border-b border-white/10 bg-gradient-to-r from-gray-900/50 to-gray-800/50 backdrop-blur-md">
           <div className="flex flex-col">
-            <h2 className="text-xl font-bold text-white">
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
               Web Arama Sonuçları
             </h2>
-            <p className="text-sm text-gray-400 truncate">
-              "{searchTerm}" için bulundu
+            <p className="text-sm text-gray-400 truncate flex items-center space-x-2 mt-1">
+              <Search className="w-4 h-4" />
+              <span>"{searchTerm}" için bulundu</span>
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors"
+            className="p-2 text-gray-400 hover:text-white hover:bg-red-600/20 rounded-lg transition-all duration-300 hover:scale-110"
           >
             <X className="w-6 h-6" />
           </button>

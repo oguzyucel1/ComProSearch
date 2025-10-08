@@ -7,7 +7,11 @@ import CategoryDropdown from "./components/CategoryDropdown";
 import ComparisonTab from "./components/ComparisonTab";
 import OtpInputPage from "./pages/OtpInputPage";
 import type { Product } from "./types";
-import { fetchProductsByTab, fetchCategoriesByTab } from "./services/products";
+import {
+  fetchProductsByTab,
+  fetchCategoriesByTab,
+  fetchLastUpdatedDate,
+} from "./services/products";
 
 type TabType = "oksid" | "penta" | "denge" | "comparison";
 
@@ -48,6 +52,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>(initial);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<50 | 100 | 200>(50);
   const [total, setTotal] = useState(0);
@@ -57,26 +62,34 @@ function App() {
   useEffect(() => {
     if (activeTab === "comparison") {
       setProducts([]);
+      setLastUpdated(null);
       return;
     }
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetchProductsByTab(activeTab, page, pageSize, {
-      search: searchQuery,
-      category: selectedCategory,
-      sort: sortBy,
-    })
-      .then(({ items, total }) => {
+
+    // Fetch both products and last updated date
+    Promise.all([
+      fetchProductsByTab(activeTab, page, pageSize, {
+        search: searchQuery,
+        category: selectedCategory,
+        sort: sortBy,
+      }),
+      fetchLastUpdatedDate(activeTab),
+    ])
+      .then(([productsResult, lastUpdatedDate]) => {
         if (cancelled) return;
-        setProducts(items);
-        setTotal(total);
+        setProducts(productsResult.items);
+        setTotal(productsResult.total);
+        setLastUpdated(lastUpdatedDate);
       })
       .catch((e) => {
         if (cancelled) return;
         setError(e?.message || "Veri çekilirken hata oluştu");
         setProducts([]);
         setTotal(0);
+        setLastUpdated(null);
       })
       .finally(() => {
         if (cancelled) return;
@@ -128,23 +141,27 @@ function App() {
     return (
       <div className="h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-black text-gray-100 flex flex-col">
         {/* Header */}
-        <header className="bg-gray-900/60 backdrop-blur border-b border-white/10 z-50 flex-shrink-0">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <header className="bg-gray-900/60 backdrop-blur-xl border-b border-white/10 z-50 flex-shrink-0 relative overflow-hidden">
+          {/* Animated background gradient */}
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-orange-500/5 animate-pulse"></div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
             <div className="flex items-center justify-between h-16">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-md shadow-orange-900/20">
-                  <Package className="w-6 h-6 text-white" />
+              <div className="flex items-center space-x-3 group">
+                <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg shadow-orange-900/30 group-hover:shadow-orange-500/40 transition-all duration-300 group-hover:scale-110">
+                  <Package className="w-6 h-6 text-white group-hover:rotate-12 transition-transform duration-300" />
                 </div>
-                <h1 className="text-2xl font-semibold tracking-tight text-white">
+                <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-blue-100 to-orange-200 bg-clip-text text-transparent hover:from-orange-200 hover:via-purple-200 hover:to-blue-200 transition-all duration-500">
                   ComPro Product Search
                 </h1>
               </div>
               <button
                 onClick={() => setShowOtpPage(false)}
-                className="inline-flex items-center gap-2 rounded-md border border-blue-500 px-4 py-2 text-sm font-semibold text-blue-400 transition-colors hover:bg-blue-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="group inline-flex items-center gap-2 rounded-lg border border-blue-500/50 px-4 py-2 text-sm font-semibold text-blue-400 transition-all duration-300 hover:bg-blue-500/10 hover:border-blue-400 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
-                <Package className="size-4" />
-                <span>Ana Sayfaya Dön</span>
+                <Package className="size-4 group-hover:rotate-12 transition-transform duration-300" />
+                <span className="group-hover:text-blue-300 transition-colors">
+                  Ana Sayfaya Dön
+                </span>
               </button>
             </div>
           </div>
@@ -161,23 +178,27 @@ function App() {
   return (
     <div className="h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-black text-gray-100 flex flex-col">
       {/* Header */}
-      <header className="bg-gray-900/60 backdrop-blur border-b border-white/10 z-50 flex-shrink-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="bg-gray-900/60 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50 overflow-hidden">
+        {/* Animated background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 via-blue-500/5 to-purple-500/5 animate-pulse"></div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-md shadow-orange-900/20">
-                <Package className="w-6 h-6 text-white" />
+            <div className="flex items-center space-x-3 group">
+              <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg shadow-orange-900/30 group-hover:shadow-orange-500/40 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+                <Package className="w-6 h-6 text-white group-hover:rotate-12 transition-transform duration-300" />
               </div>
-              <h1 className="text-2xl font-semibold tracking-tight text-white">
+              <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-orange-100 to-blue-200 bg-clip-text text-transparent hover:from-blue-200 hover:via-purple-200 hover:to-orange-200 transition-all duration-700 hover:scale-105">
                 ComPro Product Search
               </h1>
             </div>
             <button
               onClick={() => setShowOtpPage(true)}
-              className="inline-flex items-center gap-2 rounded-md border border-green-500 px-4 py-2 text-sm font-semibold text-green-400 transition-colors hover:bg-green-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+              className="group inline-flex items-center gap-2 rounded-lg border border-green-500/50 px-4 py-2 text-sm font-semibold text-green-400 transition-all duration-300 hover:bg-green-500/10 hover:border-green-400 hover:scale-105 hover:shadow-lg hover:shadow-green-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
             >
-              <KeyRound className="size-4" />
-              <span>Ürün Güncelleme</span>
+              <KeyRound className="size-4 group-hover:rotate-12 transition-transform duration-300" />
+              <span className="group-hover:text-green-300 transition-colors">
+                Ürün Güncelleme
+              </span>
             </button>
           </div>
         </div>
@@ -216,15 +237,25 @@ function App() {
               </div>
 
               {/* Results Summary */}
-              <div className="mb-6 flex items-center justify-between">
-                <p className="text-gray-300">
-                  Toplam
-                  <span className="font-semibold text-white mx-1">{total}</span>
-                  ürün • Bu sayfada
-                  <span className="font-semibold text-white mx-1">
-                    {pageProducts.length}
-                  </span>
-                </p>
+              <div className="mb-6 flex items-center justify-between p-4 bg-gradient-to-r from-gray-900/40 to-gray-800/40 rounded-xl border border-white/10 backdrop-blur-sm">
+                <div className="group">
+                  <p className="text-gray-300 transition-all duration-300 group-hover:text-gray-200">
+                    Toplam
+                    <span className="font-bold text-transparent bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text mx-1 transition-all duration-500 hover:from-purple-400 hover:to-orange-400">
+                      {total.toLocaleString("tr-TR")}
+                    </span>
+                    ürün • Bu sayfada
+                    <span className="font-bold text-transparent bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text mx-1 transition-all duration-500 hover:from-red-400 hover:to-pink-400">
+                      {pageProducts.length}
+                    </span>
+                  </p>
+                  {lastUpdated && (
+                    <p className="text-xs text-gray-400 mt-1 flex items-center group-hover:text-gray-300 transition-colors">
+                      <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
+                      Son güncelleme: {lastUpdated}
+                    </p>
+                  )}
+                </div>
                 <div className="flex items-center space-x-4">
                   {/* Sıralama */}
                   <div className="flex items-center space-x-2">

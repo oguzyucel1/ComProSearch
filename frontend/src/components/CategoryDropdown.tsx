@@ -22,9 +22,9 @@ const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
       case "oksid":
         return "from-orange-500 to-amber-500";
       case "penta":
-        return "from-red-500 to-rose-500";
+        return "from-orange-500 to-yellow-500";
       case "denge":
-        return "from-gray-700 to-gray-900";
+        return "from-gray-400 to-gray-600";
       default:
         return "from-blue-500 to-indigo-600";
     }
@@ -35,9 +35,9 @@ const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
       case "oksid":
         return "border-orange-700 focus:border-orange-500";
       case "penta":
-        return "border-red-700 focus:border-red-500";
+        return "border-orange-700 focus:border-red-500";
       case "denge":
-        return "border-gray-800 focus:border-gray-600";
+        return "border-gray-600 focus:border-gray-400";
       default:
         return "border-blue-700 focus:border-blue-500";
     }
@@ -50,7 +50,7 @@ const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
       case "penta":
         return "hover:bg-red-950/20";
       case "denge":
-        return "hover:bg-gray-900/30";
+        return "hover:bg-gray-800/30";
       default:
         return "hover:bg-blue-950/20";
     }
