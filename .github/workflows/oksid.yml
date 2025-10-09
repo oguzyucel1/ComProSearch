@@ -36,5 +36,6 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           PYTHONPATH: ${{ github.workspace }}
           SCRAPERAPI_KEY: ${{ secrets.SCRAPERAPI_KEY }}
+          TR_PROXY_URL: ${{ secrets.TR_PROXY_URL }}
         run: |
           python -m scripts.oksid.update_oksid

@@ -4,7 +4,6 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 import requests
 import os
-from scripts.shared.supabase_client import supabase # Supabase'in dahil olduğunu varsayıyoruz
 
 # Supabase Client'ın Tanımlandığı Varsayımı
 try:
@@ -27,12 +26,23 @@ HEADERS = {
     'Connection': 'keep-alive',
 }
 
+# --- YENİ: Proxy Yapılandırması ---
+# TR_PROXY_URL ortam değişkeninden proxy bilgilerini oku (GitHub Secrets'tan gelir)
+PROXY_URL = os.getenv('TR_PROXY_URL')
+PROXIES = {}
+if PROXY_URL:
+    PROXIES = {
+        'http': PROXY_URL,
+        'https': PROXY_URL,
+    }
+# ------------------------------------
+
 # --- HTML Çekme (Sıralı, Hata Denemesi 3) ---
 def fetch_html(url, retries=3, backoff=5): 
     for attempt in range(retries):
         try:
-            # Hız için timeout 120 saniyeye düşürüldü
-            res = requests.get(url, headers=HEADERS, timeout=120) 
+            # GÜNCELLENDİ: requests.get çağrısına proxies parametresi eklendi
+            res = requests.get(url, headers=HEADERS, proxies=PROXIES, timeout=120) 
             res.raise_for_status()
             
             if res.history:
@@ -40,7 +50,6 @@ def fetch_html(url, retries=3, backoff=5):
 
             return BeautifulSoup(res.text, "html.parser")
         except Exception as e:
-            # Hata durumunda bekleme süresi korunur
             print(f"⚠️ Hata {e} (URL: {url}) → retry {attempt+1}/{retries}")
             if attempt < retries - 1:
                 time.sleep(backoff * (attempt + 1))
@@ -101,7 +110,6 @@ def crawl_product_page(url, category_name):
 
         product_list_div = soup.select_one("div.colProductIn.shwstock.shwcheck.colPrdList")
         if not product_list_div:
-            # Sayfa sonu, hata veya yönlendirme sonrası doğru içerik gelmedi
             break
 
         for li in product_list_div.select("ul li"):
@@ -156,7 +164,7 @@ def crawl_product_page(url, category_name):
         if not href or href.startswith("javascript"):
             break
         url = urljoin(BASE_URL, href)
-        time.sleep(1)  # ✅ Sayfalar arası bekleme 1 saniyeye düşürüldü
+        time.sleep(1)
 
     if products:
         save_to_supabase(products, category_name)
@@ -164,18 +172,26 @@ def crawl_product_page(url, category_name):
 
 # --- Kategori Tarama ---
 def crawl_category(url, category_name="Ana Sayfa"):
-    # Sıralı olduğu için kategori başlangıcında yazdırıldı
     print(f"\n📂 Kategori başlıyor: {category_name} → {url}") 
     try:
         crawl_product_page(url, category_name)
     except Exception as e:
         print(f"❌ {category_name} genel hatası: {e}")
-    time.sleep(2)  # ✅ Kategoriler arası bekleme 2 saniyeye düşürüldü
+    time.sleep(2)
 
 # --- Ana Fonksiyon (Sıralı Çalışma) ---
 def crawl_from_homepage():
     print("🚀 Tarama başladı...")
     
+    # YENİ: Proxy durumunu kontrol edip log basar
+    if PROXIES:
+        # Loglarda kullanıcı adı/şifre görünmemesi için adresi @ işaretinden sonra alıyoruz
+        proxy_host = PROXY_URL.split('@')[-1]
+        print(f"✅ Proxy ile çalışılıyor: {proxy_host}")
+    else:
+        print("ℹ️ Proxy ayarı (TR_PROXY_URL) bulunamadı. Direkt bağlantı kullanılacak.")
+    # -------------------------------------------
+
     try:
         soup = fetch_html(BASE_URL)
         if not soup:
@@ -190,7 +206,6 @@ def crawl_from_homepage():
         print("⚠️ Ana sayfada kategori menüsü bulunamadı.")
         return
 
-    # Sıralı döngü: Her kategori bitince diğerine geçilir.
     for a in topcats:
         name = a.get_text(strip=True)
         link = urljoin(BASE_URL, a.get("href"))
