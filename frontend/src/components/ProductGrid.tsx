@@ -28,7 +28,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products, tabType }) => {
         <ProductCard
           key={String(product.id)}
           product={product}
-          tabType={tabType}
+          tabType={product.marketplace || tabType}
         />
       ))}
     </div>

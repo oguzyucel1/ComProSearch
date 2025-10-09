@@ -71,10 +71,23 @@ def clean_price(price_text):
     except:
         return None
 
-# --- Supabase Kaydetme (Aynı) ---
+# --- Supabase Kaydetme (Fiyat Geçmişi ile) ---
 def save_to_supabase(products, category_name, batch_size=50):
     if not products or not supabase:
         return
+
+    # Önce mevcut ürünleri çek (URL'lere göre)
+    product_urls = [p["url"] for p in products if p.get("url")]
+    existing_products = {}
+    
+    if product_urls:
+        try:
+            # Mevcut ürünleri DB'den çek
+            response = supabase.table("oksid_products").select("url,price_2").in_("url", product_urls).execute()
+            existing_products = {item["url"]: item for item in response.data}
+            print(f"📊 DB'den {len(existing_products)} mevcut ürün bilgisi alındı.")
+        except Exception as e:
+            print(f"⚠️ Mevcut ürünler çekilirken hata: {e}")
 
     for i in range(0, len(products), batch_size):
         chunk = products[i:i+batch_size]
@@ -82,6 +95,13 @@ def save_to_supabase(products, category_name, batch_size=50):
         for p in chunk:
             p["marketplace"] = "oksid"
             p["created_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Eğer ürün daha önce varsa, eski fiyatı last_price'a aktar
+            if p["url"] in existing_products:
+                old_price = existing_products[p["url"]].get("price_2")
+                if old_price is not None:
+                    p["last_price"] = old_price
+                    print(f"💰 {p['name'][:50]}... → Eski fiyat: {old_price}, Yeni fiyat: {p.get('price_2')}")
 
         for attempt in range(3):
             try:

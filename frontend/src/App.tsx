@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Package, KeyRound } from "lucide-react";
+import { Package, KeyRound, Heart, Eye, X } from "lucide-react";
 import TabNavigation from "./components/TabNavigation";
 import ProductGrid from "./components/ProductGrid";
 import SearchBar from "./components/SearchBar";
@@ -46,6 +46,8 @@ const initial: Product[] = [];
 
 function App() {
   const [showOtpPage, setShowOtpPage] = useState(false);
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [showOffers, setShowOffers] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("oksid");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -58,9 +60,53 @@ function App() {
   const [total, setTotal] = useState(0);
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>("name");
+  const [favorites, setFavorites] = useState<Product[]>([]);
+  const [offers, setOffers] = useState<Product[]>([]);
+
+  // LocalStorage'dan favoriler ve teklifleri yükle
+  useEffect(() => {
+    const loadFavorites = () => {
+      const stored = JSON.parse(localStorage.getItem("favorites") || "[]");
+      // Marketplace bilgisi olmayan ürünleri filtrele (eski veriler)
+      const validFavorites = stored.filter((item: Product) => item.marketplace);
+      if (validFavorites.length !== stored.length) {
+        // Geçersiz ürünler varsa localStorage'ı güncelle
+        localStorage.setItem("favorites", JSON.stringify(validFavorites));
+      }
+      setFavorites(validFavorites);
+    };
+    const loadOffers = () => {
+      const stored = JSON.parse(localStorage.getItem("offers") || "[]");
+      // Marketplace bilgisi olmayan ürünleri filtrele (eski veriler)
+      const validOffers = stored.filter((item: Product) => item.marketplace);
+      if (validOffers.length !== stored.length) {
+        // Geçersiz ürünler varsa localStorage'ı güncelle
+        localStorage.setItem("offers", JSON.stringify(validOffers));
+      }
+      setOffers(validOffers);
+    };
+
+    loadFavorites();
+    loadOffers();
+
+    // Custom eventleri dinle (ProductCard'dan tetiklenir)
+    window.addEventListener("favoritesUpdated", loadFavorites);
+    window.addEventListener("offersUpdated", loadOffers);
+
+    // Storage değişikliklerini dinle
+    window.addEventListener("storage", loadFavorites);
+    window.addEventListener("storage", loadOffers);
+
+    return () => {
+      window.removeEventListener("favoritesUpdated", loadFavorites);
+      window.removeEventListener("offersUpdated", loadOffers);
+      window.removeEventListener("storage", loadFavorites);
+      window.removeEventListener("storage", loadOffers);
+    };
+  }, []);
 
   useEffect(() => {
-    if (activeTab === "comparison") {
+    if (activeTab === "comparison" || showFavorites || showOffers) {
       setProducts([]);
       setLastUpdated(null);
       return;
@@ -98,7 +144,16 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, page, pageSize, searchQuery, selectedCategory, sortBy]);
+  }, [
+    activeTab,
+    page,
+    pageSize,
+    searchQuery,
+    selectedCategory,
+    sortBy,
+    showFavorites,
+    showOffers,
+  ]);
 
   // Reset page when tab, pageSize, search, category, or sort changes
   useEffect(() => {
@@ -191,28 +246,151 @@ function App() {
                 ComPro Product Search
               </h1>
             </div>
-            <button
-              onClick={() => setShowOtpPage(true)}
-              className="group inline-flex items-center gap-2 rounded-lg border border-green-500/50 px-4 py-2 text-sm font-semibold text-green-400 transition-all duration-300 hover:bg-green-500/10 hover:border-green-400 hover:scale-105 hover:shadow-lg hover:shadow-green-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
-            >
-              <KeyRound className="size-4 group-hover:rotate-12 transition-transform duration-300" />
-              <span className="group-hover:text-green-300 transition-colors">
-                Ürün Güncelleme
-              </span>
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setShowFavorites(!showFavorites);
+                  setShowOffers(false);
+                  setShowOtpPage(false);
+                  const stored = JSON.parse(
+                    localStorage.getItem("favorites") || "[]"
+                  );
+                  setFavorites(stored);
+                }}
+                className={`group inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 ${
+                  showFavorites
+                    ? "border-red-500 bg-red-500/20 text-red-300 shadow-red-500/20"
+                    : "border-red-500/50 text-red-400 hover:bg-red-500/10 hover:border-red-400 hover:shadow-red-500/20 focus-visible:ring-red-500"
+                }`}
+              >
+                <Heart
+                  className={`size-4 transition-transform duration-300 ${
+                    showFavorites ? "fill-current" : "group-hover:scale-110"
+                  }`}
+                />
+                <span className="group-hover:text-red-300 transition-colors">
+                  Favorilerim ({favorites.length})
+                </span>
+              </button>
+              <button
+                onClick={() => {
+                  setShowOffers(!showOffers);
+                  setShowFavorites(false);
+                  setShowOtpPage(false);
+                  const stored = JSON.parse(
+                    localStorage.getItem("offers") || "[]"
+                  );
+                  setOffers(stored);
+                }}
+                className={`group inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 ${
+                  showOffers
+                    ? "border-blue-500 bg-blue-500/20 text-blue-300 shadow-blue-500/20"
+                    : "border-blue-500/50 text-blue-400 hover:bg-blue-500/10 hover:border-blue-400 hover:shadow-blue-500/20 focus-visible:ring-blue-500"
+                }`}
+              >
+                <Eye
+                  className={`size-4 transition-transform duration-300 ${
+                    showOffers ? "fill-current" : "group-hover:scale-110"
+                  }`}
+                />
+                <span className="group-hover:text-blue-300 transition-colors">
+                  Teklif Sunduklarım ({offers.length})
+                </span>
+              </button>
+              <button
+                onClick={() => {
+                  setShowOtpPage(true);
+                  setShowFavorites(false);
+                  setShowOffers(false);
+                }}
+                className="group inline-flex items-center gap-2 rounded-lg border border-green-500/50 px-4 py-2 text-sm font-semibold text-green-400 transition-all duration-300 hover:bg-green-500/10 hover:border-green-400 hover:scale-105 hover:shadow-lg hover:shadow-green-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+              >
+                <KeyRound className="size-4 group-hover:rotate-12 transition-transform duration-300" />
+                <span className="group-hover:text-green-300 transition-colors">
+                  Ürün Güncelleme
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Tab Navigation */}
-      <div className="flex-shrink-0">
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
+      {!showFavorites && !showOffers && (
+        <div className="flex-shrink-0">
+          <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {activeTab === "comparison" ? (
+          {showFavorites ? (
+            <>
+              <div className="mb-8 relative">
+                <button
+                  onClick={() => setShowFavorites(false)}
+                  className="absolute -top-2 right-0 p-2 rounded-full bg-red-500/10 border border-red-500/50 text-red-400 hover:bg-red-500/20 hover:text-red-300 hover:border-red-400 transition-all duration-300 hover:scale-110 hover:rotate-90 group"
+                  title="Ana sayfaya dön"
+                >
+                  <X className="w-6 h-6 transition-transform duration-300" />
+                </button>
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-red-400 to-rose-500 bg-clip-text text-transparent mb-2">
+                  Favorilerim
+                </h2>
+                <p className="text-gray-400">
+                  Favori olarak işaretlediğiniz {favorites.length} adet ürün
+                  var!
+                </p>
+              </div>
+              {favorites.length === 0 ? (
+                <div className="py-12 text-center">
+                  <Heart className="w-16 h-16 mx-auto mb-4 text-gray-600" />
+                  <p className="text-gray-400 text-lg">
+                    Henüz favori ürününüz yok
+                  </p>
+                  <p className="text-gray-500 text-sm mt-2">
+                    Ürün kartlarındaki kalp ikonuna tıklayarak favorilere
+                    ekleyebilirsiniz
+                  </p>
+                </div>
+              ) : (
+                <ProductGrid products={favorites} tabType="oksid" />
+              )}
+            </>
+          ) : showOffers ? (
+            <>
+              <div className="mb-8 relative">
+                <button
+                  onClick={() => setShowOffers(false)}
+                  className="absolute -top-2 right-0 p-2 rounded-full bg-blue-500/10 border border-blue-500/50 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 hover:border-blue-400 transition-all duration-300 hover:scale-110 hover:rotate-90 group"
+                  title="Ana sayfaya dön"
+                >
+                  <X className="w-6 h-6 transition-transform duration-300" />
+                </button>
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent mb-2">
+                  Teklif Sunduklarım
+                </h2>
+                <p className="text-gray-400">
+                  Teklif sunduğunuz {offers.length} adet ürün var!
+                </p>
+              </div>
+              {offers.length === 0 ? (
+                <div className="py-12 text-center">
+                  <Eye className="w-16 h-16 mx-auto mb-4 text-gray-600" />
+                  <p className="text-gray-400 text-lg">
+                    Henüz teklif ettiğiniz ürün yok
+                  </p>
+                  <p className="text-gray-500 text-sm mt-2">
+                    Ürün kartlarındaki göz ikonuna tıklayarak teklif
+                    ettiklerinize ekleyebilirsiniz
+                  </p>
+                </div>
+              ) : (
+                <ProductGrid products={offers} tabType="oksid" />
+              )}
+            </>
+          ) : activeTab === "comparison" ? (
             <ComparisonTab />
           ) : (
             <>

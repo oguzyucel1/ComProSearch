@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Eye, Heart, Check, X, ExternalLink } from "lucide-react";
 import type { Product } from "../types";
 
@@ -10,13 +10,68 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
+  const [isOffered, setIsOffered] = useState(false);
+
+  // Ürünün marketplace bilgisini kullan, yoksa tabType'ı kullan
+  const effectiveTabType = product.marketplace || tabType;
+
+  // LocalStorage'dan favoriler ve teklifleri yükle
+  useEffect(() => {
+    const favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
+    const offers = JSON.parse(localStorage.getItem("offers") || "[]");
+
+    setIsFavorited(favorites.some((fav: Product) => fav.id === product.id));
+    setIsOffered(offers.some((offer: Product) => offer.id === product.id));
+  }, [product.id]);
+
+  // Favorilere ekle/çıkar
+  const toggleFavorite = () => {
+    const favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
+
+    if (isFavorited) {
+      // Favorilerden çıkar
+      const updated = favorites.filter((fav: Product) => fav.id !== product.id);
+      localStorage.setItem("favorites", JSON.stringify(updated));
+      setIsFavorited(false);
+    } else {
+      // Favorilere ekle
+      favorites.push(product);
+      localStorage.setItem("favorites", JSON.stringify(favorites));
+      setIsFavorited(true);
+    }
+
+    // Custom event tetikle
+    window.dispatchEvent(new Event("favoritesUpdated"));
+  };
+
+  // Teklife ekle/çıkar
+  const toggleOffer = () => {
+    const offers = JSON.parse(localStorage.getItem("offers") || "[]");
+
+    if (isOffered) {
+      // Tekliflerden çıkar
+      const updated = offers.filter(
+        (offer: Product) => offer.id !== product.id
+      );
+      localStorage.setItem("offers", JSON.stringify(updated));
+      setIsOffered(false);
+    } else {
+      // Tekliflere ekle
+      offers.push(product);
+      localStorage.setItem("offers", JSON.stringify(offers));
+      setIsOffered(true);
+    }
+
+    // Custom event tetikle
+    window.dispatchEvent(new Event("offersUpdated"));
+  };
 
   const getGradient = () => {
-    switch (tabType) {
+    switch (effectiveTabType) {
       case "oksid":
         return "from-orange-600 to-amber-600";
       case "penta":
-        return "from-orange-600 to-yellow-600";
+        return "from-red-600 to-red-900";
       case "denge":
         return "from-gray-400 to-gray-600";
       default:
@@ -25,7 +80,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
   };
 
   const getBorderColor = () => {
-    switch (tabType) {
+    switch (effectiveTabType) {
       case "oksid":
         return "border-orange-700 hover:border-orange-500";
       case "penta":
@@ -38,7 +93,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
   };
 
   const getDefaultImage = () => {
-    switch (tabType) {
+    switch (effectiveTabType) {
       case "oksid":
         return "/images/oksid_banner.jpg";
       case "penta":
@@ -61,14 +116,18 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
       {/* Animated background gradient overlay */}
       <div
         className={`absolute inset-0 bg-gradient-to-br ${
-          tabType === "penta" ? "from-red-600 to-rose-600" : getGradient()
+          effectiveTabType === "penta"
+            ? "from-red-600 to-rose-600"
+            : getGradient()
         } opacity-0 group-hover:opacity-10 transition-opacity duration-500 rounded-xl`}
       ></div>
 
       {/* Glowing border effect */}
       <div
         className={`absolute -inset-0.5 bg-gradient-to-r ${
-          tabType === "penta" ? "from-red-600 to-rose-600" : getGradient()
+          effectiveTabType === "penta"
+            ? "from-red-600 to-rose-600"
+            : getGradient()
         } opacity-0 group-hover:opacity-30 blur-sm transition-opacity duration-500 rounded-xl`}
       ></div>
 
@@ -110,12 +169,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
             }`}
           >
             <button
-              onClick={() => setIsFavorited(!isFavorited)}
+              onClick={toggleFavorite}
               className={`p-2 rounded-full transition-all duration-300 transform hover:scale-110 ${
                 isFavorited
                   ? "bg-red-600 text-white shadow-lg shadow-red-500/30"
                   : "bg-gray-800/90 text-gray-200 hover:text-red-400 hover:bg-red-600/20 backdrop-blur-md"
               }`}
+              title={isFavorited ? "Favorilerden çıkar" : "Favorilere ekle"}
             >
               <Heart
                 className={`w-4 h-4 ${
@@ -123,8 +183,22 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
                 }`}
               />
             </button>
-            <button className="p-2 bg-gray-800/90 rounded-full text-gray-200 hover:text-blue-400 hover:bg-blue-600/20 transition-all duration-300 transform hover:scale-110 backdrop-blur-md">
-              <Eye className="w-4 h-4" />
+            <button
+              onClick={toggleOffer}
+              className={`p-2 rounded-full transition-all duration-300 transform hover:scale-110 ${
+                isOffered
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+                  : "bg-gray-800/90 text-gray-200 hover:text-blue-400 hover:bg-blue-600/20 backdrop-blur-md"
+              }`}
+              title={
+                isOffered ? "Tekliflerden çıkar" : "Teklif ettiklerime ekle"
+              }
+            >
+              <Eye
+                className={`w-4 h-4 ${
+                  isOffered ? "fill-current animate-pulse" : ""
+                }`}
+              />
             </button>
           </div>
         </div>
@@ -147,11 +221,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
               {product.priceText ? (
                 <p
                   className={`text-2xl font-bold bg-gradient-to-r ${
-                    tabType === "penta"
+                    effectiveTabType === "penta"
                       ? "from-red-400 to-rose-500"
-                      : tabType === "oksid"
+                      : effectiveTabType === "oksid"
                       ? "from-yellow-400 to-orange-500"
-                      : tabType === "denge"
+                      : effectiveTabType === "denge"
                       ? "from-gray-300 to-gray-600"
                       : "from-yellow-400 to-orange-500"
                   } bg-clip-text text-transparent animate-pulse drop-shadow-lg`}
@@ -161,11 +235,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
               ) : (
                 <p
                   className={`text-2xl font-bold bg-gradient-to-r ${
-                    tabType === "penta"
+                    effectiveTabType === "penta"
                       ? "from-red-400 to-rose-500"
-                      : tabType === "oksid"
+                      : effectiveTabType === "oksid"
                       ? "from-yellow-400 to-orange-500"
-                      : tabType === "denge"
+                      : effectiveTabType === "denge"
                       ? "from-gray-300 to-gray-600"
                       : "from-yellow-400 to-orange-500"
                   } bg-clip-text text-transparent animate-pulse drop-shadow-lg`}
@@ -188,7 +262,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
               className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center space-x-2 transform hover:scale-105 ${
                 product.inStock
                   ? `bg-gradient-to-r ${getGradient()} text-white hover:shadow-xl shadow-lg ${
-                      tabType === "penta"
+                      effectiveTabType === "penta"
                         ? "hover:shadow-red-500/30"
                         : "hover:shadow-current/30"
                     } relative overflow-hidden`

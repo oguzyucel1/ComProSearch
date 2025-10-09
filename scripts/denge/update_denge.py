@@ -52,14 +52,36 @@ def get_and_clear_otp(timeout=TIMEOUT_SECONDS, poll_interval=5):
         time.sleep(poll_interval)
     raise TimeoutError(f"🚨 OTP {timeout} saniye içinde Supabase'e yazılmadı, işlem iptal edildi.")
 
-# --- Supabase kayıt (Değişiklik yok) ---
+# --- Supabase kayıt (Fiyat Geçmişi ile) ---
 def save_products_to_supabase(products, batch_size=50):
-    # ... (Bu fonksiyonun içeriği aynı kalmıştır)
     if not products or not supabase:
         print("❌ Supabase client eksik veya ürün listesi boş. Kayıt atlandı.")
         return
+    
+    # Önce mevcut ürünleri çek (product_id'lere göre)
+    product_ids = [p["product_id"] for p in products if p.get("product_id")]
+    existing_products = {}
+    
+    if product_ids:
+        try:
+            # Mevcut ürünleri DB'den çek
+            response = supabase.table("denge_products").select("product_id,special_price").in_("product_id", product_ids).execute()
+            existing_products = {item["product_id"]: item for item in response.data}
+            print(f"📊 DB'den {len(existing_products)} mevcut ürün bilgisi alındı.")
+        except Exception as e:
+            print(f"⚠️ Mevcut ürünler çekilirken hata: {e}")
+    
     for i in range(0, len(products), batch_size):
         chunk = products[i:i+batch_size]
+        
+        for p in chunk:
+            # Eğer ürün daha önce varsa, eski fiyatı last_price'a aktar
+            if p["product_id"] in existing_products:
+                old_price = existing_products[p["product_id"]].get("special_price")
+                if old_price is not None:
+                    p["last_price"] = old_price
+                    print(f"💰 {p['name'][:50]}... → Eski fiyat: {old_price}, Yeni fiyat: {p.get('special_price')}")
+        
         for attempt in range(3):
             try:
                 data = (supabase.table("denge_products").upsert(chunk, on_conflict="product_id").execute())

@@ -7,6 +7,8 @@ export interface BaseProduct {
   inStock: boolean;
   url?: string;
   currency?: string;
+  lastPrice?: number; // Önceki fiyat (fiyat değişikliği takibi için)
+  marketplace?: string; // Ürünün hangi marketplace'den geldiği (oksid, penta, denge)
 }
 
 // Opsiyonel alanlar (her tabloda yok)

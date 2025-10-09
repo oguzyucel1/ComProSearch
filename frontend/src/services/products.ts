@@ -73,6 +73,8 @@ const oksidMapper = (row: any): Product => ({
   url: row.url ?? undefined,
   currency: row.currency ?? undefined,
   priceText: undefined,
+  lastPrice: row.last_price ? Number(row.last_price) : undefined,
+  marketplace: "oksid",
 });
 
 // 🟡 bayinet_products mapper
@@ -91,6 +93,8 @@ const bayinetMapper = (row: any): Product => ({
   url: row.url ?? undefined,
   currency: undefined,
   priceText: row.price_display ?? undefined,
+  lastPrice: row.last_price ? Number(row.last_price) : undefined,
+  marketplace: "penta",
 });
 
 // 🔵 denge_products mapper
@@ -109,6 +113,8 @@ const dengeMapper = (row: any): Product => ({
   priceText: row.list_price
     ? `${row.list_price} ${row.currency ?? ""}`
     : undefined,
+  lastPrice: row.last_price ? Number(row.last_price) : undefined,
+  marketplace: "denge",
 });
 
 // Fetch last updated date for a specific marketplace
@@ -169,19 +175,19 @@ const TABLES: Record<
   oksid: {
     table: "oksid_products",
     select:
-      "id,name,url,price_1,price_2,currency,stock,category,created_at,marketplace",
+      "id,name,url,price_1,price_2,currency,stock,category,created_at,last_price",
     mapper: oksidMapper,
   },
   penta: {
     table: "bayinet_products",
     select:
-      "product_id,name,url,category_id,price,price_display,stock_info,last_updated",
+      "product_id,name,url,category_id,price,price_display,stock_info,last_updated,last_price",
     mapper: bayinetMapper,
   },
   denge: {
     table: "denge_products",
     select:
-      "id,product_id,name,category,special_price,list_price,currency,stock_info,last_updated,marketplace,url",
+      "id,product_id,name,category,special_price,list_price,currency,stock_info,last_updated,url,last_price",
     mapper: dengeMapper,
   },
   comparison: null,
