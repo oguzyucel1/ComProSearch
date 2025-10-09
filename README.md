@@ -17,7 +17,8 @@
 
 <div align="center">
   <img src="frontend/public/images/penta_banner.jpg" alt="Penta Banner" width="48%"/>
-  <img src="frontend/public/images/oksid_banner.jpg" alt="Oksid Banner" width="48%"/>
+  <img src="frontend/public/images/oksid_banner.png" alt="Oksid Banner" width="48%"/>
+  <img src="frontend/public/images/denge_banner.jpg" alt="Oksid Banner" width="48%"/>
 </div>
 
 ---
