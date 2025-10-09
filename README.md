@@ -1,5 +1,4 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/oguzyucel1/ComProSearch/main/frontend/public/images/denge_banner.png" alt="ComProSearch Logo Banner" width="70%"/>
   <h1>ComProSearch: Enterprise Product Comparison Engine</h1>
   <p>
     <strong>A high-performance product aggregation and comparison platform designed to unify data from multiple electronics distributors into a single, intuitive interface.</strong>
@@ -17,8 +16,8 @@
 
 <div align="center">
   <img src="frontend/public/images/penta_banner.jpg" alt="Penta Banner" width="48%"/>
-  <img src="frontend/public/images/oksid_banner.png" alt="Oksid Banner" width="48%"/>
-  <img src="frontend/public/images/denge_banner.jpg" alt="Oksid Banner" width="48%"/>
+  <img src="frontend/public/images/oksid_banner.jpg" alt="Oksid Banner" width="48%"/>
+  <img src="frontend/public/images/denge_banner.png" alt="Oksid Banner" width="48%"/>
 </div>
 
 ---
