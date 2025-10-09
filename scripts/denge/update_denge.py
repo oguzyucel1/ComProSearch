@@ -67,7 +67,7 @@ def save_products_to_supabase(products, batch_size=50):
 
 # --- Login + Otomatik OTP (OTP ADIMI DEVRE DIŞI BIRAKILDI) ---
 def eden_login(p):
-    browser = p.chromium.launch(headless=False, slow_mo=50) 
+    browser = p.chromium.launch(headless=True, slow_mo=50) 
     context = browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
     page = context.new_page()
     page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => false})")
