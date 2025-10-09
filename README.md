@@ -1,68 +1,81 @@
-# ComProSearch: Multi-Source Product Comparison Tool
+<div align="center">
+  <h1>ComProSearch 🚀</h1>
+  <p>
+    <strong>A powerful product comparison engine to aggregate, search, and compare electronics from multiple distributors in Turkey.</strong>
+  </p>
+  
+  <p>
+    <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React"/>
+    <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/>
+    <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite"/>
+    <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS"/>
+    <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"/>
+    <img src="https://img.shields.io/badge/Supabase-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase"/>
+    <img src="https://img.shields.io/badge/Netlify-00C7B7?style=for-the-badge&logo=netlify&logoColor=white" alt="Netlify"/>
+  </p>
+</div>
 
-ComProSearch is a powerful product comparison engine designed to aggregate and display product data from multiple electronics distributors in Turkey. It provides a unified, fast, and feature-rich interface for searching, filtering, and comparing products from sources like Oksid, Penta (Bayinet), and Denge.
+<div align="center">
+  <img src="frontend/public/images/penta_banner.jpg" alt="Penta Banner" width="48%"/>
+  <img src="frontend/public/images/oksid_banner.jpg" alt="Oksid Banner" width="48%"/>
+  <img src="frontend/public/images/denge_banner.png" alt="Denge Banner" width="97%"/>
+</div>
 
-![ComProSearch Banner](frontend/public/images/penta_banner.jpg)
+---
 
 ## ✨ Features
 
-- **Multi-Source Aggregation**: Fetches and displays product data from several distributors in real-time.
-- **Unified Search**: A single search bar to query across all available marketplaces.
-- **Tabbed Navigation**: Easily switch between different data sources (Oksid, Penta, Denge).
-- **Advanced Filtering & Sorting**: Filter products by category and sort by price.
-- **Dynamic UI**: A modern, responsive interface built with React and Tailwind CSS, featuring smooth animations and conditional color themes for each distributor.
-- **Real-time Data Updates**: See the last time the data for each marketplace was updated.
-- **Scalable Architecture**: The backend is powered by Supabase, with data integration handled by modular Python scripts.
+- **🌐 Multi-Source Aggregation**: Fetches and displays product data from Oksid, Penta (Bayinet), and Denge.
+- **🔍 Unified Search**: A single, powerful search bar to query across all available marketplaces.
+- **🗂️ Tabbed Navigation**: Easily switch between different data sources with a clean, tabbed interface.
+- **📊 Advanced Filtering & Sorting**: Filter products by category and sort by price (low-to-high or high-to-low).
+- **🎨 Dynamic UI**: A modern, responsive interface built with React and Tailwind CSS, featuring smooth animations and unique color themes for each distributor.
+- **⏱️ Real-time Data Updates**: Instantly see the last time the data for each marketplace was refreshed.
+- **🏗️ Scalable Architecture**: Backend powered by Supabase, with data integration handled by modular Python scripts.
+
+---
 
 ## 🛠️ Tech Stack
 
-- **Frontend**:
-  - **Framework**: React (with TypeScript)
-  - **Build Tool**: Vite
-  - **Styling**: Tailwind CSS with custom animations
-  - **UI Components**: `lucide-react` for icons
+| Category               | Technology -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Frontend**           | <img src="https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB" alt="React"/> <img src="https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript"/> <img src="https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite"/> <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white" alt="Tailwind CSS"/> - |
+| **Backend & Database** | <img src="https://img.shields.io/badge/Supabase-3FCF8E?style=flat-square&logo=supabase&logoColor=white" alt="Supabase"/> <img src="https://img.shields.io/badge/PostgreSQL-316192?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL"/> <img src="https://img.shields.io/badge/Deno-000000?style=flat-square&logo=deno&logoColor=white" alt="Deno"/> -                                                                                                                              |
+| **Data Integration**   | <img src="https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python"/> <img src="https://img.shields.io/badge/Pandas-150458?style=flat-square&logo=pandas&logoColor=white" alt="Pandas"/> <img src="https://img.shields.io/badge/Requests-2.31.0-brightgreen?style=flat-square" alt="Requests"/> -                                                                                                                                                      |
+| **Deployment**         | <img src="https://img.shields.io/badge/Netlify-00C7B7?style=flat-square&logo=netlify&logoColor=white" alt="Netlify"/> -                                                                                                                                                                                                                                                                                                                                                                             |
 
-- **Backend & Database**:
-  - **Platform**: Supabase
-  - **Database**: Supabase Postgres
-  - **Serverless Functions**: Supabase Edge Functions (Deno) for potential backend logic.
-
-- **Data Integration**:
-  - **Language**: Python
-  - **Libraries**: `supabase-client`, `pandas`, `requests`
-  - **Functionality**: Individual scripts for each data source to fetch, process, and upload data to the Supabase database.
-
-- **Deployment**:
-  - **Frontend**: Netlify
+---
 
 ## 📂 Project Structure
 
 ```
 ComProSearch/
-├── frontend/         # React/Vite frontend application
-│   ├── src/
-│   │   ├── components/ # Reusable React components
-│   │   ├── services/   # Data fetching logic (products.ts)
-│   │   └── lib/        # Supabase client initialization
-│   └── vite.config.ts  # Vite configuration
+├── 📁 frontend/         # React/Vite frontend application
+│   ├── 📁 src/
+│   │   ├── 📁 components/ # Reusable React components
+│   │   ├── 📁 services/   # Data fetching logic (products.ts)
+│   │   └── 📁 lib/        # Supabase client initialization
+│   └── 📄 vite.config.ts  # Vite configuration
 │
-├── scripts/          # Python scripts for data scraping/updating
-│   ├── bayinet/
-│   ├── denge/
-│   └── oksid/
+├── 📁 scripts/          # Python scripts for data scraping/updating
+│   ├── 📁 bayinet/
+│   ├── 📁 denge/
+│   └── 📁 oksid/
 │
-├── supabase/         # Supabase backend configuration
-│   └── functions/      # Serverless edge functions
+├── 📁 supabase/         # Supabase backend configuration
+│   └── 📁 functions/      # Serverless edge functions
 │
-├── netlify.toml      # Netlify deployment configuration
-└── README.md         # This file
+├── 📄 netlify.toml      # Netlify deployment configuration
+└── 📄 README.md         # This file
 ```
+
+---
 
 ## 🚀 Getting Started
 
 Follow these instructions to set up and run the project locally.
 
-### Prerequisites
+### ✅ Prerequisites
 
 - **Node.js**: v18.x or higher
 - **Python**: v3.9 or higher
@@ -79,7 +92,7 @@ cd ComProSearch
 ### 2. Supabase Setup
 
 1.  Go to [Supabase](https://supabase.com/) and create a new project.
-2.  Inside your project, go to the **SQL Editor** and create the necessary tables for each data source (e.g., `oksid_products`, `bayinet_products`, `denge_products`). The Python scripts in the `scripts/` directory can be used as a reference for the required table schemas.
+2.  Inside your project, go to the **SQL Editor** and create the necessary tables (e.g., `oksid_products`, `bayinet_products`, `denge_products`). Refer to the Python scripts for schema details.
 3.  Go to **Project Settings > API**. You will need the **Project URL** and the **`anon` public key**.
 
 ### 3. Frontend Setup
@@ -88,58 +101,46 @@ cd ComProSearch
     ```bash
     cd frontend
     ```
-2.  Create a `.env.local` file and add your Supabase credentials:
+2.  Create a `.env.local` file with your Supabase credentials:
     ```env
     VITE_SUPABASE_URL=YOUR_SUPABASE_PROJECT_URL
     VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
     ```
-3.  Install the dependencies:
+3.  Install dependencies and run the development server:
     ```bash
     npm install
-    ```
-4.  Run the development server:
-    ```bash
     npm run dev
     ```
-    The application should now be running on `http://localhost:5173`.
+    The app will be running on `http://localhost:5173`.
 
 ### 4. Data Scripts Setup
 
-The Python scripts are responsible for populating your Supabase database.
-
-1.  For each script directory (`scripts/bayinet`, `scripts/denge`, `scripts/oksid`), you need to set up the environment and install dependencies.
-2.  Create a `.env` file inside the `scripts/shared/` directory (you may need to create this directory if it doesn't exist) with your Supabase credentials. This will be used by the Python Supabase client.
+1.  Create a `.env` file in `scripts/shared/` with your Supabase **`service_role` key**:
     ```env
     # In scripts/shared/.env
     SUPABASE_URL=YOUR_SUPABASE_PROJECT_URL
     SUPABASE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
     ```
-    **Note**: For the scripts, use the **`service_role` key** from your Supabase API settings, as they need write access to the database.
-
-3.  Install dependencies for each script. For example, for the `denge` script:
+2.  Install dependencies for each script. For example, for `denge`:
     ```bash
-    cd scripts/denge
-    pip install -r requirements.txt
-    cd ../.. # Return to root
+    pip install -r scripts/denge/requirements.txt
     ```
-    Repeat this for `oksid` and `bayinet`.
-
-4.  Run a script to update the data:
+3.  Run a script to populate the database:
     ```bash
     python -m scripts.denge.update_denge
     ```
 
+---
+
 ## 🚢 Deployment
 
-The frontend is configured for deployment on **Netlify**.
+The frontend is configured for seamless deployment on **Netlify**.
 
 1.  Push your code to a GitHub repository.
-2.  Connect your repository to a new site on Netlify.
+2.  Connect the repository to a new site on Netlify.
 3.  Configure the build settings:
     - **Base directory**: `frontend`
     - **Build command**: `npm run build`
     - **Publish directory**: `frontend/dist`
 4.  Add your Supabase environment variables (`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`) to the Netlify site's environment variables.
-5.  Deploy the site.
-
-The `netlify.toml` file in the root directory contains the necessary redirect rules to ensure client-side routing works correctly.
+5.  Deploy! 🚀
