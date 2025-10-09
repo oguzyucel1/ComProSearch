@@ -3,6 +3,8 @@
 ComProSearch is a powerful product comparison engine designed to aggregate and display product data from multiple electronics distributors in Turkey. It provides a unified, fast, and feature-rich interface for searching, filtering, and comparing products from sources like Oksid, Penta (Bayinet), and Denge.
 
 ![ComProSearch Banner](frontend/public/images/penta_banner.jpg)
+![ComProSearch Banner](frontend/public/images/denge_banner.png)
+![ComProSearch Banner](frontend/public/images/oksid_banner.jpg)
 
 ## ✨ Features
 
