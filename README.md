@@ -1,27 +1,8 @@
-<div align="center">
-  <h1>ComProSearch 🚀</h1>
-  <p>
-    <strong>A powerful product comparison engine to aggregate, search, and compare electronics from multiple distributors in Turkey.</strong>
-  </p>
-  
-  <p>
-    <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React"/>
-    <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/>
-    <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite"/>
-    <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS"/>
-    <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"/>
-    <img src="https://img.shields.io/badge/Supabase-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase"/>
-    <img src="https://img.shields.io/badge/Netlify-00C7B7?style=for-the-badge&logo=netlify&logoColor=white" alt="Netlify"/>
-  </p>
-</div>
+# ComProSearch: Multi-Source Product Comparison Tool
 
-<div align="center">
-  <img src="frontend/public/images/penta_banner.jpg" alt="Penta Banner" width="48%"/>
-  <img src="frontend/public/images/oksid_banner.jpg" alt="Oksid Banner" width="48%"/>
-  <img src="frontend/public/images/denge_banner.png" alt="Denge Banner" width="97%"/>
-</div>
+ComProSearch is a powerful product comparison engine designed to aggregate and display product data from multiple electronics distributors in Turkey. It provides a unified, fast, and feature-rich interface for searching, filtering, and comparing products from sources like Oksid, Penta (Bayinet), and Denge.
 
----
+![ComProSearch Banner](frontend/public/images/penta_banner.jpg)
 
 ## ✨ Features
 
