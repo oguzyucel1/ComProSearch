@@ -42,5 +42,6 @@ jobs:
           DENGE_EMAIL: ${{ secrets.DENGE_EMAIL }}
           DENGE_PASSWORD: ${{ secrets.DENGE_PASSWORD }}
           PYTHONPATH: ${{ github.workspace }}
+          TR_PROXY_URL: ${{ secrets.TR_PROXY_URL }}
         run: |
           python -m scripts.denge.update_denge
