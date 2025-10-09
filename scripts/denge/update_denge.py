@@ -26,12 +26,17 @@ def clean_price(price_str):
     if not price_str:
         return None
     try:
+        # "126,00" formatını float 126.0'a çevirir
         cleaned_str = str(price_str).replace(".", "").replace(",", ".")
         return float(re.sub(r"[^\d.]", "", cleaned_str))
     except (ValueError, TypeError):
         return None
 
-# --- Supabase OTP Yönetimi (ARTIK KULLANILMIYOR AMA YERİNDE DURUYOR) ---
+# --- Supabase ve Login Fonksiyonları (Değişiklik Yok) ---
+# get_and_clear_otp, save_products_to_supabase ve eden_login fonksiyonları
+# bir önceki script'teki halleriyle buraya kopyalanmalıdır.
+# ... (Bu fonksiyonların kodunu buraya ekleyin) ...
+# --- Supabase OTP Yönetimi ---
 def get_and_clear_otp(timeout=TIMEOUT_SECONDS, poll_interval=5):
     start_time = time.time()
     print(f"⏳ {timeout} saniye boyunca DB'den OTP bekleniyor (Tablo: {OTP_TABLE})...")
@@ -65,60 +70,89 @@ def save_products_to_supabase(products, batch_size=50):
                 print(f"⚠️ Supabase error (chunk {i//batch_size+1}), retry {attempt+1}/3: {e}")
                 time.sleep(5)
 
-# --- Login + Otomatik OTP (OTP ADIMI DEVRE DIŞI BIRAKILDI) ---
+# --- Login + Otomatik OTP ---
 def eden_login(p):
     browser = p.chromium.launch(headless=False, slow_mo=50) 
     context = browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
     page = context.new_page()
     page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => false})")
-    
-    print("➡️ Giriş sayfasına gidiliyor...")
     page.goto(f"{BASE_URL}/Account/Login")
-    
     page.wait_for_selector("#username_", timeout=20000)
     page.fill("#username_", EMAIL)
     page.fill("#password_", PASSWORD)
-    print("✅ E-Posta ve Şifre dolduruldu.")
-    
+    print("✅ E-Posta ve Şifre dolduruldu")
     page.click("button[type='submit']")
-    print("🚀 Giriş butonuna tıklandı, ana sayfanın yüklenmesi bekleniyor...")
-
-    # --- OTP ADIMLARI DEVRE DIŞI BIRAKILDI ---
-    # OTP ekranını bekleme, kodu çekme, doldurma ve gönderme adımları kaldırıldı.
-    # Script artık doğrudan ana sayfanın yüklenip yüklenmediğini kontrol edecek.
-    # -------------------------------------------
-
-    # Giriş sonrası ana sayfada görünen bir elementi bekleyerek login işleminin
-    # başarılı olduğunu teyit ediyoruz.
+    print("🚀 Giriş butonuna tıklandı, OTP ekranı bekleniyor...")
+    page.wait_for_selector("#smscode", timeout=60000)
+    try:
+        otp_code = get_and_clear_otp(timeout=TIMEOUT_SECONDS)
+    except TimeoutError as e:
+        browser.close()
+        raise e 
+    page.fill("#smscode", otp_code)
+    print(f"✅ OTP kodu ({len(otp_code)} hane) Supabase'den çekilip dolduruldu.")
+    try:
+        page.check("input[name='IsTrusted'][value='false']", force=True)
+        print("☑️ 'Bu Tarayıcıya Güvenme' force seçildi.")
+    except Exception:
+        page.click("label:has-text('Bu Tarayıcıya Güvenme')", force=True)
+        print("☑️ 'Bu Tarayıcıya Güvenme' label click ile seçildi.")
+    try:
+        page.wait_for_selector("button.button-1[type='submit']", timeout=10000)
+        page.click("button.button-1[type='submit']", force=True)
+        print("▶️ Devam et tıklandı.")
+    except Exception as e:
+        try:
+            page.evaluate("document.querySelector('form#js_submit').submit()")
+            print("▶️ Form JS ile submit edildi (fallback).")
+        except Exception as js_e:
+            print(f"❌ Form submit edilemedi, tarayıcı kapatılıyor: {js_e}")
+            browser.close()
+            raise
     page.wait_for_selector("a.navigation-categories-item-title", timeout=60000)
     print("🏁 Ana sayfa yüklendi, oturum hazır:", page.url)
-    
     return page, browser
 
-# --- ANA SCRAPER FONKSİYONU ---
+# --- YENİ ANA SCRAPER FONKSİYONU ---
 def scrape_category(page, category_name):
+    """
+    Belirli bir kategorideki tüm sayfaları gezer ve ürün verilerini toplar.
+    """
     all_products = []
     page_count = 1
+
     while True:
         print(f"📄 '{category_name}' kategorisi, sayfa {page_count} taranıyor...")
+        
+        # Ürünlerin listelendiği ana satırları bekle
         page.wait_for_selector(".table-row.js_basket_parents", timeout=30000)
         product_rows = page.query_selector_all(".table-row.js_basket_parents")
         print(f"   -> Bu sayfada {len(product_rows)} ürün bulundu.")
+
         for row in product_rows:
             try:
+                # Gerçek ürün ID'sini checkbox'tan almak en sağlıklısı
                 product_id = row.query_selector("input[name='cbxitem']").get_attribute("data-pid")
+                
                 name = row.query_selector(".title-cell h4").inner_text().strip()
                 url_element = row.query_selector(".product-figure a")
                 relative_url = url_element.get_attribute("href") if url_element else None
+                
                 stock = row.query_selector(".stock-status .stock").inner_text().strip()
+                
+                # Özel Fiyatı data-pprice'tan çekmek daha güvenilir
                 special_price_element = row.query_selector(".price-cell:not(.price-cell-last) .price")
                 special_price_raw = special_price_element.get_attribute("data-pprice") if special_price_element else None
+                
+                # Liste Fiyatı
                 list_price_element = row.query_selector(".price-cell-last .price")
                 list_price_raw = list_price_element.get_attribute("data-pprice") if list_price_element else None
+                
                 currency_element = row.query_selector(".currency")
-                currency = currency_element.inner_text().strip() if currency_element else "$"
+                currency = currency_element.inner_text().strip() if currency_element else "$" # Varsayılan
+
                 all_products.append({
-                    "product_id": f"denge_{product_id}",
+                    "product_id": f"denge_{product_id}", # ID'nin benzersiz olmasını garantilemek için prefix
                     "name": name,
                     "special_price": clean_price(special_price_raw),
                     "list_price": clean_price(list_price_raw),
@@ -131,23 +165,32 @@ def scrape_category(page, category_name):
                 })
             except Exception as e:
                 print(f"⚠️ Bir ürün satırı işlenirken hata oluştu, atlanıyor: {e}")
+        
+        # --- Sayfalama Kontrolü ---
         next_page_button = page.query_selector("a.js_pagelink[rel='next']")
+        
         if next_page_button:
             print("   -> Sonraki sayfa butonuna tıklandı.")
             next_page_button.click()
+            # Sayfanın yeni ürünleri yüklemesini bekle (çok önemli)
             page.wait_for_load_state("networkidle", timeout=60000)
             page_count += 1
         else:
             print(f"🏁 '{category_name}' kategorisi için son sayfaya ulaşıldı. Toplam {len(all_products)} ürün çekildi.")
             break
+            
     return all_products
+
 
 # --- ANA ÇALIŞTIRMA BLOĞU ---
 def run_scraper():
     print("🚀 Edenge Scraper (Doğrudan Veri Çekme Modu) başlıyor...")
+
     try:
         with sync_playwright() as p:
             page, browser = eden_login(p)
+
+            # Kategori linklerini çek
             category_elems = page.query_selector_all("a.navigation-categories-item-title")
             categories = []
             for elem in category_elems:
@@ -156,19 +199,28 @@ def run_scraper():
                 if href and name:
                     categories.append((name, urljoin(BASE_URL, href)))
             print(f"🔎 {len(categories)} kategori bulundu.")
+
+            # Kategori bazlı scraping
             for i, (cat_name, cat_url) in enumerate(categories, start=1):
                 print(f"\n➡️ {i}/{len(categories)}. Kategori Başlatılıyor: {cat_name}")
                 try:
                     page.goto(cat_url, wait_until="networkidle", timeout=60000)
+                    
+                    # Kategorideki tüm ürünleri ve sayfaları tara
                     products = scrape_category(page, cat_name)
+                    
+                    # Toplanan ürünleri veritabanına kaydet
                     if products:
                         save_products_to_supabase(products)
                     else:
                         print(f"ℹ️ '{cat_name}' kategorisinden hiç ürün çekilemedi.")
+
                 except Exception as e:
                     print(f"🚨 Kategori '{cat_name}' işlenirken kritik bir hata oluştu: {e}")
+            
             browser.close()
             print("\n✅ Tüm kategoriler başarıyla işlendi. Script tamamlandı.")
+
     except Exception as e:
         print(f"🔥🔥 Kritik hata, tarayıcı başlatılamadı veya oturum açılamadı: {e}")
 
