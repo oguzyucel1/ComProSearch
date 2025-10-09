@@ -116,7 +116,7 @@ def manual_login_and_get_session(p):
     CUSTOMER_CODE = os.getenv("BAYINET_CUSTOMER_CODE")
     EMAIL = os.getenv("BAYINET_EMAIL")
     PASSWORD = os.getenv("BAYINET_PASSWORD")
-
+ 
     if not all([CUSTOMER_CODE, EMAIL, PASSWORD]):
         raise RuntimeError("🚨 Giriş bilgileri eksik (env BAYINET_CUSTOMER_CODE, EMAIL, PASSWORD)!")
 
