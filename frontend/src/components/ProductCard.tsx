@@ -217,7 +217,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
 
           {/* Price */}
           <div className="flex items-center justify-between">
-            <div className="space-y-1">
+            <div className="space-y-1 w-full">
               {product.priceText ? (
                 <p
                   className={`text-2xl font-bold bg-gradient-to-r ${
@@ -250,6 +250,50 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
                   {product.currency || "₺"}
                 </p>
               )}
+
+              {/* Price Change Indicator - Only show for favorited/offered products */}
+              {(isFavorited || isOffered) &&
+                product.lastPrice &&
+                product.lastPrice !== product.price && (
+                  <div className="flex items-center space-x-2 mt-2">
+                    {product.price < product.lastPrice ? (
+                      <div className="flex items-center space-x-1 text-green-400 text-sm font-semibold animate-pulse">
+                        <span className="text-lg">↓</span>
+                        <span>
+                          Fiyat düştü! (
+                          {(product.lastPrice - product.price).toLocaleString(
+                            "tr-TR",
+                            {
+                              minimumFractionDigits: 2,
+                            }
+                          )}{" "}
+                          {product.currency || "₺"} indirim)
+                        </span>
+                      </div>
+                    ) : product.price > product.lastPrice ? (
+                      <div className="flex items-center space-x-1 text-orange-400 text-sm font-semibold">
+                        <span className="text-lg">↑</span>
+                        <span>
+                          Fiyat arttı (
+                          {(product.price - product.lastPrice).toLocaleString(
+                            "tr-TR",
+                            {
+                              minimumFractionDigits: 2,
+                            }
+                          )}{" "}
+                          {product.currency || "₺"})
+                        </span>
+                      </div>
+                    ) : null}
+                    <div className="text-xs text-gray-500">
+                      Önceki:{" "}
+                      {product.lastPrice.toLocaleString("tr-TR", {
+                        minimumFractionDigits: 2,
+                      })}{" "}
+                      {product.currency || "₺"}
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
 
