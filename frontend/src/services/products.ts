@@ -64,7 +64,7 @@ const oksidMapper = (row: any): Product => ({
   id: String(row.id),
   name: row.name ?? "",
   category: row.category ?? "Diğer",
-  price: Number(row.price_2 ?? row.price_1 ?? 0),
+  price: Number(row.price_1 ?? row.price_2 ?? 0),
   image: "", // oksid’de image yok gibi, boş bırakıyoruz
   rating: 0,
   reviews: 0,
@@ -91,8 +91,11 @@ const bayinetMapper = (row: any): Product => ({
   description: "",
   inStock: toBoolStock(row.stock_info),
   url: row.url ?? undefined,
-  currency: undefined,
-  priceText: row.price_display ?? undefined,
+  currency: row.currency ?? undefined,
+  priceText:
+    row.price != null
+      ? `${Number(row.price).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ${row.currency ?? ""}`
+      : undefined,
   lastPrice: row.last_price ? Number(row.last_price) : undefined,
   marketplace: "penta",
 });
@@ -181,7 +184,7 @@ const TABLES: Record<
   penta: {
     table: "bayinet_products",
     select:
-      "product_id,name,url,category_id,price,price_display,stock_info,last_updated,last_price",
+      "product_id,name,url,category_id,price,currency,stock_info,last_updated,last_price",
     mapper: bayinetMapper,
   },
   denge: {

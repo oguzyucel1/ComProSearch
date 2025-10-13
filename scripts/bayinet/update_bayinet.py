@@ -189,6 +189,7 @@ def scrape_all_pages(page, category_id, max_pages=200):
     """
     all_products_in_category = []
     for page_num in range(max_pages):
+        # ... search_model ve URL oluşturma kısmı aynı ...
         search_model = {
             "SelectedProperties": [], "SelectedPropertyGroups": [], "AllProp": False, "PageNumber": page_num,
             "VisibleProductCount": "36", "SearchTextInProducts": "", "Categories": [category_id],
@@ -219,23 +220,36 @@ def scrape_all_pages(page, category_id, max_pages=200):
                 product_url_absolute = urljoin(BASE_URL, link_tag.get_attribute("href"))
                 product_id = parse_qs(urlparse(product_url_absolute).query).get("ProductId", [None])[0]
 
-                price_value, price_display = 0.0, "Belirtilmemiş"
+                # --- FİYAT ALMA BÖLÜMÜ GÜNCELLENDİ ---
+                price_value = 0.0
+                currency = None # YENİ: Currency için değişken
+                
                 price_tag = product_divs.nth(i).locator("strong.fiyatTooltip.pointer")
                 if price_tag.count() > 0:
+                    # Sayısal değeri al (Mevcut mantık)
                     data_price = price_tag.first.get_attribute("data-price")
                     if data_price:
                         price_value = float(data_price.replace(",", "."))
-                        price_display = f"{price_value:.2f} USD + %20 KDV"
+                    
+                    # YENİ: Para birimini al
+                    currency = price_tag.first.get_attribute("data-currency")
 
                 stock_divs = product_divs.nth(i).locator("span.stock-status")
                 stock_info = " | ".join([
                     stock_divs.nth(j).inner_text().strip() for j in range(stock_divs.count())
                 ]) if stock_divs.count() > 0 else "Belirtilmemiş"
 
+                # DEĞİŞTİ: Append edilen sözlük güncellendi
                 products_on_page.append({
-                    "product_id": product_id, "name": product_name, "url": product_url_absolute,
-                    "category_id": category_id, "price": price_value, "price_display": price_display,
-                    "stock_info": stock_info, "last_updated": time.strftime("%Y-%m-%d %H:%M:%S")
+                    "product_id": product_id,
+                    "name": product_name,
+                    "url": product_url_absolute,
+                    "category_id": category_id,
+                    "price": price_value,        # Karşılaştırma için sayısal fiyat
+                    "currency": currency,        # YENİ: Para birimi
+                    "stock_info": stock_info,
+                    "last_updated": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    # KALDIRILDI: price_display ve price_str alanları silindi
                 })
             except Exception as e:
                 print(f"⚠️ Ürün ayrıştırma hatası (Kategori {category_id}, Sayfa {page_num}): {e}")
