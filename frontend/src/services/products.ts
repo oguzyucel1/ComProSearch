@@ -105,7 +105,7 @@ const dengeMapper = (row: any): Product => ({
   id: String(row.product_id), // denge’de id var ama product_id unique → UI için product_id daha mantıklı
   name: row.name ?? "",
   category: row.category ?? "Diğer",
-  price: Number(row.special_price ?? row.list_price ?? 0),
+  price: Number(row.special_price ?? 0),
   image: "",
   rating: 0,
   reviews: 0,
@@ -113,8 +113,8 @@ const dengeMapper = (row: any): Product => ({
   inStock: toBoolStock(row.stock_info),
   url: row.url ?? undefined,
   currency: row.currency ?? undefined,
-  priceText: row.list_price
-    ? `${row.list_price} ${row.currency ?? ""}`
+  priceText: row.special_price
+    ? `${row.special_price} ${row.currency ?? ""}`
     : undefined,
   lastPrice: row.last_price ? Number(row.last_price) : undefined,
   marketplace: "denge",
