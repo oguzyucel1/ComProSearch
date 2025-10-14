@@ -55,10 +55,10 @@ def get_and_clear_otp(timeout=TIMEOUT_SECONDS, poll_interval=5):
 
 # --- Supabase kayıt (Fiyat Geçmişi ile) - YENİ VE VERİMLİ VERSİYON ---
 # --- Supabase kayıt (Fiyat Geçmişi ile) - GÜNCELLENMİŞ VE DÜZELTİLMİŞ VERSİYON ---
+# --- Supabase kayıt (FİYAT VE STOK KONTROLLÜ VERSİYON) ---
 def save_products_to_supabase(products, batch_size=50):
     """
-    Sadece yeni veya fiyatı değişen ürünleri DB'ye yazar.
-    Okuma işlemini de büyük veri setleri için parçalara böler.
+    Sadece yeni veya fiyatı/stok durumu değişen ürünleri DB'ye yazar.
     """
     if not products or not supabase:
         print("❌ Supabase client eksik veya ürün listesi boş. Kayıt atlandı.")
@@ -67,14 +67,15 @@ def save_products_to_supabase(products, batch_size=50):
     product_ids = [p["product_id"] for p in products if p.get("product_id")]
     existing_products = {}
     
-    # Adım 1: Mevcut ürünlerin fiyat bilgilerini DB'den verimli şekilde çek
+    # Adım 1: Mevcut ürünleri DB'den verimli şekilde çek
     SELECT_CHUNK_SIZE = 900
     if product_ids:
         print(f"📊 DB'den {len(product_ids)} ürünün mevcut durumu sorgulanacak...")
         for i in range(0, len(product_ids), SELECT_CHUNK_SIZE):
             id_chunk = product_ids[i:i + SELECT_CHUNK_SIZE]
             try:
-                response = supabase.table("denge_products").select("product_id,special_price").in_("product_id", id_chunk).execute()
+                # DEĞİŞİKLİK 1: Veritabanından artık 'stock_info' bilgisini de çekiyoruz.
+                response = supabase.table("denge_products").select("product_id, special_price, stock_info").in_("product_id", id_chunk).execute()
                 for item in response.data:
                     existing_products[item["product_id"]] = item
                 print(f"   -> {len(response.data)} mevcut ürün bilgisi alındı (grup {i//SELECT_CHUNK_SIZE + 1}).")
@@ -90,21 +91,44 @@ def save_products_to_supabase(products, batch_size=50):
         if not product_id:
             continue
 
-        # Durum 1: Ürün veritabanında yok (YENİ ÜRÜN)
+        # Durum 1: Yeni ürün
         if product_id not in existing_products:
             print(f"✨ Yeni ürün bulundu: {p['name'][:60]}...")
-            # ÇÖZÜM: Yeni ürüne de 'last_price' alanını None olarak ekliyoruz.
             p['last_price'] = None
             products_to_upsert.append(p)
             continue
         
-        # Durum 2: Ürün veritabanında var, fiyatları karşılaştır
-        old_price = existing_products[product_id].get("special_price")
+        # DEĞİŞİKLİK 2: Artık hem fiyat hem de stok durumu karşılaştırılıyor.
+        existing_product = existing_products[product_id]
+        
+        # Fiyatları al (alan adı 'special_price')
+        old_price = existing_product.get("special_price")
         new_price = p.get("special_price")
+        
+        # Stok durumlarını al (alan adı 'stock_info')
+        old_stock = existing_product.get("stock_info")
+        new_stock = p.get("stock_info")
 
-        if old_price is not None and new_price is not None and old_price != new_price:
-            p['last_price'] = old_price
-            print(f"💰 Fiyat Değişti: {p['name'][:60]}... | Eski: {old_price} -> Yeni: {new_price}")
+        # Değişiklik olup olmadığını kontrol et
+        price_has_changed = (old_price is not None and new_price is not None and old_price != new_price)
+        stock_has_changed = (old_stock is not None and new_stock is not None and old_stock != new_stock)
+
+        # Eğer fiyat VEYA stok durumu değişmişse, ürünü güncelleme listesine ekle
+        if price_has_changed or stock_has_changed:
+            change_reasons = []
+            
+            if price_has_changed:
+                p['last_price'] = old_price
+                change_reasons.append(f"Fiyat: {old_price} -> {new_price}")
+            else:
+                p['last_price'] = old_price
+            
+            if stock_has_changed:
+                change_reasons.append(f"Stok: '{old_stock}' -> '{new_stock}'")
+
+            log_message = " | ".join(change_reasons)
+            print(f"🔄 Güncelleme: {p['name'][:50]}... | {log_message}")
+            
             products_to_upsert.append(p)
 
     # Adım 3: Sadece filtrelenmiş listeyi veritabanına yaz

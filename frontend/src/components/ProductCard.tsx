@@ -349,14 +349,22 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
               href={product.url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center space-x-2 transform hover:scale-105 ${
+              className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center space-x-2 transform hover:scale-105 relative overflow-hidden ${
                 product.inStock
                   ? `bg-gradient-to-r ${getGradient()} text-white hover:shadow-xl shadow-lg ${
                       effectiveTabType === "penta"
                         ? "hover:shadow-red-500/30"
+                        : effectiveTabType === "oksid"
+                        ? "hover:shadow-orange-500/30"
                         : "hover:shadow-current/30"
-                    } relative overflow-hidden`
-                  : "bg-gray-800 text-gray-500 cursor-not-allowed pointer-events-none"
+                    }`
+                  : effectiveTabType === "oksid"
+                  ? "bg-gradient-to-r from-orange-900/60 to-amber-900/60 border border-orange-600/40 text-orange-300 hover:from-orange-800/70 hover:to-amber-800/70 hover:border-orange-500/60 hover:text-orange-200 shadow-lg hover:shadow-xl hover:shadow-orange-700/20"
+                  : effectiveTabType === "penta"
+                  ? "bg-gradient-to-r from-red-900/60 to-rose-900/60 border border-red-600/40 text-red-300 hover:from-red-800/70 hover:to-rose-800/70 hover:border-red-500/60 hover:text-red-200 shadow-lg hover:shadow-xl hover:shadow-red-700/20"
+                  : effectiveTabType === "denge"
+                  ? "bg-gradient-to-r from-gray-800/60 to-gray-900/60 border border-gray-600/40 text-gray-400 hover:from-gray-700/70 hover:to-gray-800/70 hover:border-gray-500/60 hover:text-gray-300 shadow-lg hover:shadow-xl hover:shadow-gray-700/20"
+                  : "bg-gray-800/80 border border-gray-700/50 text-gray-400 hover:bg-gray-700/80 hover:text-gray-300 hover:border-gray-600/70"
               }`}
             >
               {product.inStock && (
@@ -366,11 +374,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
                 className={`w-5 h-5 relative z-10 ${
                   product.inStock
                     ? "group-hover:rotate-12 transition-transform duration-300"
-                    : ""
+                    : "hover:rotate-12 transition-transform duration-300"
                 }`}
               />
               <span className="relative z-10">
-                {product.inStock ? "Ürüne Git" : "Stok Yok"}
+                {product.inStock ? "Ürüne Git" : "Ürüne Git (Stok Yok)"}
               </span>
             </a>
           ) : (

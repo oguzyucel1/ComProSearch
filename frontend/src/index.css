@@ -244,3 +244,23 @@ body {
 .btn-hover:hover::before {
   left: 100%;
 }
+
+/* Autocomplete/Autofill Override - Prevent White Text */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #d1d5db !important; /* text-gray-300 */
+  -webkit-box-shadow: 0 0 0 30px #1f2937 inset !important; /* bg-gray-800 */
+  box-shadow: 0 0 0 30px #1f2937 inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+  caret-color: #d1d5db; /* Cursor color */
+}
+
+/* Firefox Autocomplete */
+input:-moz-autofill,
+input:-moz-autofill:hover,
+input:-moz-autofill:focus {
+  color: #d1d5db !important;
+  background-color: #1f2937 !important;
+}

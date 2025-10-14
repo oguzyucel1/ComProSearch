@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { ChevronDown, Tag, Search } from "lucide-react";
 
 interface CategoryDropdownProps {
@@ -22,7 +22,7 @@ const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
       case "oksid":
         return "from-orange-500 to-amber-500";
       case "penta":
-        return "from-orange-500 to-yellow-500";
+        return "from-red-600 to-rose-600";
       case "denge":
         return "from-gray-400 to-gray-600";
       default:
@@ -91,15 +91,11 @@ const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
 
       {isOpen && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-
-          {/* Dropdown Menu */}
           <div className="absolute top-full left-0 mt-2 w-[360px] h-[380px] bg-gray-900/90 backdrop-blur-lg border border-white/10 rounded-xl shadow-2xl z-20 overflow-hidden animate-slideDown">
-            {/* Search input */}
             <div className="p-3 border-b border-white/10">
               <div className="relative">
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -111,9 +107,23 @@ const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
                 />
               </div>
             </div>
+            <div
+              data-dropdown-scroll
+              className="py-2 overflow-y-auto h-[calc(380px-56px)]"
+              onWheel={(e) => {
+                const element = e.currentTarget;
+                const { scrollTop, scrollHeight, clientHeight } = element;
+                const isAtTop = scrollTop === 0;
+                const isAtBottom =
+                  Math.abs(scrollHeight - clientHeight - scrollTop) < 1;
 
-            {/* Scrollable list */}
-            <div className="py-2 overflow-y-auto h-[calc(380px-56px)]">
+                // En üstte yukarı kaydırma veya en altta aşağı kaydırma yapılıyorsa engelle
+                if ((isAtTop && e.deltaY < 0) || (isAtBottom && e.deltaY > 0)) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }}
+            >
               {filteredCategories.map((category) => {
                 const isSelected = selectedCategory === category;
                 const displayName = getCategoryDisplayName(category);

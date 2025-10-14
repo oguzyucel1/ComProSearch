@@ -1,12 +1,16 @@
 import { supabase } from "../lib/supabase";
 import type { Product, TabType } from "../types";
 
-// Ortak yardımcı fonksiyon
+// Oksid ve Denge için stok kontrolü
 function toBoolStock(val: any): boolean {
   const s = String(val ?? "")
     .trim()
     .toLowerCase();
+  
+  // Boş değer → stokta var kabul et
   if (!s) return true;
+  
+  // "Stokta Yok" veya benzer ifadeleri kontrol et
   const falsy = new Set([
     "0",
     "false",
@@ -15,8 +19,70 @@ function toBoolStock(val: any): boolean {
     "yok",
     "out",
     "stok yok",
+    "stokta yok",
+    "yoktur",
+    "stok bulunmamaktadır",
+    "mevcut değil",
+  ]);
+  
+  return !falsy.has(s);
+}
+
+// Bayinet/Penta için özel stok kontrolü
+function toBoolStockBayinet(val: any): boolean {
+  const s = String(val ?? "").trim();
+  
+  // Boş değer → stokta var kabul et
+  if (!s) return true;
+  
+  // Tüm depoları ayır ("|" ile ayrılmış)
+  const depots = s.split("|").map(d => d.trim());
+  
+  // Her depodaki stok miktarını topla
+  let totalStock = 0;
+  
+  for (const depot of depots) {
+    // "Merkez (0)" veya "Dış depo (13)" gibi formatlardan sayıyı çıkar
+    // Hem büyük hem küçük parantez destekle: (0) veya （0）
+    const match = depot.match(/[(\(](\d+)[)\)]/);
+    if (match && match[1]) {
+      totalStock += parseInt(match[1], 10);
+    }
+  }
+  
+  // Toplam stok 0'dan büyükse stokta var
+  return totalStock > 0;
+}
+
+// Denge için sayısal stok kontrolü
+function toBoolStockDenge(val: any): boolean {
+  // Null veya undefined → stokta yok
+  if (val === null || val === undefined) return false;
+  
+  // Sayıya çevir
+  const stockNum = Number(val);
+  
+  // NaN değilse ve 0'dan büyükse stokta var
+  if (!isNaN(stockNum)) {
+    return stockNum > 0;
+  }
+  
+  // Sayı değilse string kontrolü yap (eski veriler için)
+  const s = String(val).trim().toLowerCase();
+  if (!s) return false;
+  
+  const falsy = new Set([
+    "0",
+    "false",
+    "no",
+    "hayir",
+    "yok",
+    "out",
+    "stok yok",
+    "stokta yok",
     "yoktur",
   ]);
+  
   return !falsy.has(s);
 }
 
@@ -89,7 +155,7 @@ const bayinetMapper = (row: any): Product => ({
   rating: 0,
   reviews: 0,
   description: "",
-  inStock: toBoolStock(row.stock_info),
+  inStock: toBoolStockBayinet(row.stock_info),
   url: row.url ?? undefined,
   currency: row.currency ?? undefined,
   priceText:
@@ -102,7 +168,7 @@ const bayinetMapper = (row: any): Product => ({
 
 // 🔵 denge_products mapper
 const dengeMapper = (row: any): Product => ({
-  id: String(row.product_id), // denge’de id var ama product_id unique → UI için product_id daha mantıklı
+  id: String(row.product_id), // denge'de id var ama product_id unique → UI için product_id daha mantıklı
   name: row.name ?? "",
   category: row.category ?? "Diğer",
   price: Number(row.special_price ?? 0),
@@ -110,7 +176,7 @@ const dengeMapper = (row: any): Product => ({
   rating: 0,
   reviews: 0,
   description: "",
-  inStock: toBoolStock(row.stock_info),
+  inStock: toBoolStockDenge(row.stock_info),
   url: row.url ?? undefined,
   currency: row.currency ?? undefined,
   priceText: row.special_price
@@ -123,23 +189,29 @@ const dengeMapper = (row: any): Product => ({
 // Fetch last updated date for a specific marketplace
 export async function fetchLastUpdatedDate(tabType: TabType): Promise<string | null> {
   const tableConfig = TABLES[tabType];
-  if (!tableConfig) return null;
+  if (!tableConfig) {
+    console.log(`[fetchLastUpdatedDate] No table config for ${tabType}`);
+    return null;
+  }
 
   try {
     // Use the correct column names for each marketplace
-    let timestampColumn = "created_at"; // default fallback
+    let timestampColumn = "last_updated"; // Tüm marketplaces için last_updated kullan
     
     if (tabType === "denge") {
       timestampColumn = "last_updated";
     } else if (tabType === "oksid") {
-      timestampColumn = "created_at";
+      timestampColumn = "last_updated";
     } else if (tabType === "penta") {
       timestampColumn = "last_updated";
     }
 
+    console.log(`[fetchLastUpdatedDate] Fetching for ${tabType} from table ${tableConfig.table}, column: ${timestampColumn}`);
+
     const { data, error } = await supabase
       .from(tableConfig.table)
       .select(timestampColumn)
+      .not(timestampColumn, 'is', null) // Sadece last_updated değeri olan kayıtları al
       .order(timestampColumn, { ascending: false })
       .limit(1);
 
@@ -148,22 +220,43 @@ export async function fetchLastUpdatedDate(tabType: TabType): Promise<string | n
       return null;
     }
 
-    if (!data || data.length === 0) return null;
+    console.log(`[fetchLastUpdatedDate] Data received for ${tabType}:`, data);
+
+    if (!data || data.length === 0) {
+      console.log(`[fetchLastUpdatedDate] No data found for ${tabType}`);
+      return null;
+    }
 
     const row = data[0] as Record<string, any>;
     if (!row) return null;
 
     const lastDate = row[timestampColumn];
-    if (!lastDate) return null;
+    if (!lastDate) {
+      console.log(`[fetchLastUpdatedDate] No ${timestampColumn} value in row for ${tabType}`);
+      return null;
+    }
 
+    console.log(`[fetchLastUpdatedDate] Last date raw for ${tabType}:`, lastDate);
+
+    // Parse the date
+    const date = new Date(lastDate);
+    
+    // Sadece Oksid ve Penta için 3 saat geri al
+    if (tabType === "oksid" || tabType === "penta") {
+      date.setHours(date.getHours() - 3); // 3 saat geri al
+    }
+    
     // Format the date to Turkish locale
-    return new Date(lastDate).toLocaleDateString("tr-TR", {
+    const formatted = date.toLocaleString("tr-TR", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
     });
+    
+    console.log(`[fetchLastUpdatedDate] Formatted date for ${tabType}:`, formatted);
+    return formatted;
   } catch (error) {
     console.error(`Unexpected error fetching last updated date for ${tabType}:`, error);
     return null;
@@ -178,7 +271,7 @@ const TABLES: Record<
   oksid: {
     table: "oksid_products",
     select:
-      "id,name,url,price_1,price_2,currency,stock,category,created_at,last_price",
+      "id,name,url,price_1,price_2,currency,stock,category,last_updated,last_price",
     mapper: oksidMapper,
   },
   penta: {
@@ -221,7 +314,7 @@ export async function fetchProductsByTab(
   tab: TabType,
   page = 1,
   pageSize = 50,
-  opts?: { search?: string; category?: string; sort?: string }
+  opts?: { search?: string; category?: string; sort?: string; onlyInStock?: boolean }
 ): Promise<{ items: Product[]; total: number }> {
   const cfg = TABLES[tab];
   if (!cfg) return { items: [], total: 0 };
@@ -236,6 +329,7 @@ export async function fetchProductsByTab(
   const search = opts?.search?.trim();
   const category = opts?.category;
   const sort = opts?.sort;
+  const onlyInStock = opts?.onlyInStock;
 
   if (search) {
     query = query.ilike("name", `%${search}%`);
@@ -295,7 +389,15 @@ export async function fetchProductsByTab(
 
   if (error) throw error;
 
-  return { items: (data || []).map(cfg.mapper), total: count ?? 0 };
+  // Map products
+  let items = (data || []).map(cfg.mapper);
+  
+  // Client-side filtering for stock if needed
+  if (onlyInStock) {
+    items = items.filter(product => product.inStock);
+  }
+
+  return { items, total: count ?? 0 };
 }
 
 // 🔎 Kategori listesi: tüm veritabanını sayfalayarak kategorileri toplayıp eşsiz hale getirir

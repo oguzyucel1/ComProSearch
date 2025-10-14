@@ -60,6 +60,7 @@ function App() {
   const [total, setTotal] = useState(0);
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>("name");
+  const [showOnlyInStock, setShowOnlyInStock] = useState(false);
   const [favorites, setFavorites] = useState<Product[]>([]);
   const [offers, setOffers] = useState<Product[]>([]);
 
@@ -121,6 +122,7 @@ function App() {
         search: searchQuery,
         category: selectedCategory,
         sort: sortBy,
+        onlyInStock: showOnlyInStock,
       }),
       fetchLastUpdatedDate(activeTab),
     ])
@@ -151,6 +153,7 @@ function App() {
     searchQuery,
     selectedCategory,
     sortBy,
+    showOnlyInStock,
     showFavorites,
     showOffers,
   ]);
@@ -435,6 +438,23 @@ function App() {
                   )}
                 </div>
                 <div className="flex items-center space-x-4">
+                  {/* Stok Filtresi - Modern Toggle */}
+                  <label className="flex items-center space-x-3 cursor-pointer group">
+                    <span className="text-sm text-gray-400 group-hover:text-gray-200 transition-colors">
+                      Sadece stokta olanlar
+                    </span>
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={showOnlyInStock}
+                        onChange={(e) => setShowOnlyInStock(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer transition-all peer-checked:bg-gradient-to-r peer-checked:from-green-500 peer-checked:to-emerald-500 shadow-inner"></div>
+                      <div className="absolute left-[2px] top-[2px] bg-white rounded-full h-5 w-5 transition-all peer-checked:translate-x-5 shadow-md"></div>
+                    </div>
+                  </label>
+
                   {/* Sıralama */}
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-400">Sırala:</span>

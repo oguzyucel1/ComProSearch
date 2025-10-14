@@ -66,11 +66,11 @@ def clean_price(price_text):
     except:
         return None
 
-# --- GÜNCELLENMİŞ SUPABASE KAYDETME FONKSİYONU ---
+# --- GÜNCELLENMİŞ SUPABASE KAYDETME FONKSİYONU (PRICE_1 KONTROLÜ VE STOK KONTROLÜ) ---
 def save_to_supabase(products, category_name, batch_size=50):
     """
-    Sadece yeni veya fiyatı değişen ürünleri DB'ye yazar.
-    1000 satır limitini aşmak için okuma işlemini de parçalara böler.
+    Sadece yeni veya price_1/stok durumu değişen ürünleri DB'ye yazar.
+    Eski price_1 değerini last_price'a kaydeder.
     """
     if not products or not supabase:
         print("❌ Supabase client eksik veya ürün listesi boş. Kayıt atlandı.")
@@ -79,14 +79,15 @@ def save_to_supabase(products, category_name, batch_size=50):
     product_urls = [p["url"] for p in products if p.get("url")]
     existing_products = {}
     
-    # Adım 1: Mevcut ürünleri DB'den verimli şekilde çek (1000 limitini aşarak)
+    # Adım 1: Mevcut ürünleri DB'den verimli şekilde çek
     SELECT_CHUNK_SIZE = 900 
     if product_urls:
         print(f"📊 DB'den {len(product_urls)} ürünün mevcut durumu sorgulanacak...")
         for i in range(0, len(product_urls), SELECT_CHUNK_SIZE):
             url_chunk = product_urls[i:i + SELECT_CHUNK_SIZE]
             try:
-                response = supabase.table("oksid_products").select("url,price_2").in_("url", url_chunk).execute()
+                # DEĞİŞİKLİK: Veritabanından artık 'price_1' bilgisini çekiyoruz.
+                response = supabase.table("oksid_products").select("url, price_1, stock").in_("url", url_chunk).execute()
                 for item in response.data:
                     existing_products[item["url"]] = item
                 print(f"   -> {len(response.data)} mevcut ürün bilgisi alındı (grup {i//SELECT_CHUNK_SIZE + 1}).")
@@ -105,16 +106,42 @@ def save_to_supabase(products, category_name, batch_size=50):
         # Durum 1: Yeni ürün
         if url not in existing_products:
             print(f"✨ Yeni ürün bulundu: {p['name'][:60]}...")
+            p['last_price'] = None
             products_to_upsert.append(p)
             continue
         
-        # Durum 2: Mevcut ürün, fiyatları karşılaştır (price_2'ye göre)
-        old_price = existing_products[url].get("price_2")
-        new_price = p.get("price_2")
+        # Karşılaştırma için mevcut ürün bilgilerini al
+        existing_product = existing_products[url]
+        
+        # DEĞİŞİKLİK: Fiyatları 'price_1' üzerinden alıyoruz.
+        old_price = existing_product.get("price_1")
+        new_price = p.get("price_1")
+        
+        # Stok durumlarını al
+        old_stock = existing_product.get("stock")
+        new_stock = p.get("stock")
 
-        if old_price is not None and new_price is not None and old_price != new_price:
-            p['last_price'] = old_price
-            print(f"💰 Fiyat Değişti: {p['name'][:60]}... | Eski: {old_price} -> Yeni: {new_price}")
+        # Değişiklik olup olmadığını kontrol et
+        price_has_changed = (old_price is not None and new_price is not None and old_price != new_price)
+        stock_has_changed = (old_stock is not None and new_stock is not None and old_stock != new_stock)
+
+        # Eğer fiyat VEYA stok durumu değişmişse, ürünü güncelleme listesine ekle
+        if price_has_changed or stock_has_changed:
+            change_reasons = []
+            
+            if price_has_changed:
+                # DEĞİŞİKLİK: 'last_price' alanına eski 'price_1' değerini atıyoruz.
+                p['last_price'] = old_price
+                change_reasons.append(f"Fiyat: {old_price} -> {new_price}")
+            else:
+                p['last_price'] = old_price
+            
+            if stock_has_changed:
+                change_reasons.append(f"Stok: '{old_stock}' -> '{new_stock}'")
+
+            log_message = " | ".join(change_reasons)
+            print(f"🔄 Güncelleme: {p['name'][:50]}... | {log_message}")
+            
             products_to_upsert.append(p)
 
     # Adım 3: Sadece filtrelenmiş listeyi veritabanına yaz
@@ -123,10 +150,10 @@ def save_to_supabase(products, category_name, batch_size=50):
         return
         
     print(f"\n💾 '{category_name}' kategorisinde {len(products_to_upsert)} üründe değişiklik tespit edildi. Veritabanı güncelleniyor...")
-    # Statik alanları ekle
     for p in products_to_upsert:
         p["marketplace"] = "oksid"
         p["created_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        p["last_updated"] = time.strftime("%Y-%m-%d %H:%M:%S")
 
     for i in range(0, len(products_to_upsert), batch_size):
         chunk = products_to_upsert[i:i+batch_size]
@@ -134,7 +161,7 @@ def save_to_supabase(products, category_name, batch_size=50):
             try:
                 data = (
                     supabase.table("oksid_products")
-                    .upsert(chunk, on_conflict="url") # `on_conflict` "url" olmalı
+                    .upsert(chunk, on_conflict="url")
                     .execute()
                 )
                 print(f"✅ DB'ye {len(data.data)} ürün yazıldı (chunk {i//batch_size+1})")
@@ -215,7 +242,10 @@ def crawl_category(url, category_name="Ana Sayfa"):
         print(f"❌ {category_name} genel hatası: {e}")
     time.sleep(2)
 
-# --- Ana Fonksiyon ---
+# --- Kategori Tarama Fonksiyonu (Artık Gerekli Değil, Silebilirsiniz) ---
+# def crawl_category(url, category_name="Ana Sayfa"): ...
+
+# --- GÜNCELLENMİŞ Ana Fonksiyon (HİYERARŞİK TARAMA) ---
 def crawl_from_homepage():
     print("🚀 Oksid Scraper başlıyor...")
     
@@ -234,17 +264,60 @@ def crawl_from_homepage():
         print(f"❌ Ana sayfa hatası: {e}. Tarama durduruldu.")
         return
 
-    topcats = soup.select("div.catsMenu ul.hidden-xs li a")
-    if not topcats:
-        print("⚠️ Ana sayfada kategori menüsü bulunamadı.")
+    # SADECE ana kategori list item'larını seçiyoruz (iç içe olanları değil)
+    # '>' işareti, sadece doğrudan alt elemanları seçmemizi sağlar.
+    main_category_lis = soup.select("div.catsMenu > ul.hidden-xs > li")
+    if not main_category_lis:
+        print("⚠️ Ana kategoriler bulunamadı.")
         return
 
-    for a in topcats:
-        name = a.get_text(strip=True)
-        link = urljoin(BASE_URL, a.get("href"))
-        if name != "Tüm Alt Kategoriler":
-            crawl_category(link, category_name=name)
+    print(f"🔎 {len(main_category_lis)} ana kategori başlığı bulundu. İşlem başlıyor...")
 
+    # Her bir ana kategori başlığı için döngü başlat
+    for main_li in main_category_lis:
+        # Ana kategorinin link etiketini ve adını al (sadece loglama için)
+        main_cat_tag = main_li.find('a', recursive=False)
+        if not main_cat_tag:
+            continue
+        
+        main_cat_name = main_cat_tag.get_text(strip=True)
+        
+        # Eğer bu ana kategorinin altında alt menü linkleri yoksa veya istenmeyen bir başlık ise atla
+        if not main_li.select('.catSubMenu a') or main_cat_name in ["Outlet"]:
+            print(f"\n⚪️ Ana başlık '{main_cat_name}' atlanıyor (Taranacak alt kategori yok).")
+            continue
+
+        print(f"\n📁 Ana Kategori Taranıyor: {main_cat_name}")
+        time.sleep(1) # Logların okunabilirliği için kısa bekleme
+
+        # Bu ana kategorinin içindeki TÜM alt kategori linklerini bul
+        sub_cat_tags = main_li.select('.catSubMenu a')
+        
+        # Alt kategorileri de kendi içinde tekilleştir (örn: resimli ve metin linkleri)
+        unique_sub_cats = {}
+        for sub_a in sub_cat_tags:
+            sub_name = sub_a.get_text(strip=True)
+            sub_link = sub_a.get('href')
+            
+            if sub_name and sub_link and sub_name != "Tüm Alt Kategoriler":
+                full_link = urljoin(BASE_URL, sub_link)
+                # Linki anahtar olarak kullanarak aynı linke sahip tekrar edenleri engelle
+                unique_sub_cats[full_link] = sub_name
+        
+        if not unique_sub_cats:
+            print(f"   -> '{main_cat_name}' içinde taranacak alt kategori bulunamadı.")
+            continue
+
+        # Tekilleştirilmiş alt kategorileri tara
+        for link, name in unique_sub_cats.items():
+            print(f"  ➡️ Alt Kategori Başlatılıyor: {name}")
+            try:
+                # Ürünleri doğrudan alt kategori adı ile kaydetmek için crawl_product_page çağır
+                crawl_product_page(link, name)
+            except Exception as e:
+                print(f"  ❌ '{name}' alt kategorisinde genel hata: {e}")
+            time.sleep(2) # Alt kategoriler arası bekleme
+    
     print("\n✅ Tüm kategoriler tamamlandı.")
 
 if __name__ == "__main__":
