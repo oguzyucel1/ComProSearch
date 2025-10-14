@@ -1,4 +1,4 @@
-# ComProSearch Frontend (Vite + React + TypeScript + Tailwind)
+# SearchPro Frontend (Vite + React + TypeScript + Tailwind)
 
 Minimal, modern UI skeleton with tabs for Oksid, Bayinet, Denge and Karşılaştırma.
 

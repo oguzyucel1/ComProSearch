@@ -66,7 +66,7 @@ const ComparisonTab: React.FC = () => {
         (item) => ({
           marketplace: "Oksid",
           name: item.name,
-          price: Number(item.price_2 || item.price_1 || 0),
+          price: Number(item.price_1 || item.price_2 || 0),
           currency: item.currency,
           url: item.url || "#",
           available: String(item.stock || "").toLowerCase() !== "stok yok",
@@ -242,22 +242,28 @@ const ComparisonTab: React.FC = () => {
                   {getTotalResults()} ürün bulundu
                 </p>
               </div>
-              <div className="text-right space-y-1">
-                <p className="text-sm text-blue-400">
-                  Oksid: {results.oksid.length}
-                </p>
-                <p className="text-sm text-red-400">
-                  Penta: {results.penta.length}
-                </p>
-                <p className="text-sm text-gray-400">
-                  Denge: {results.denge.length}
-                </p>
+              <div className="text-right space-y-2">
+                <div className="group cursor-default">
+                  <p className="text-sm font-semibold bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent group-hover:from-orange-300 group-hover:to-amber-400 transition-all duration-300">
+                    Oksid: {results.oksid.length}
+                  </p>
+                </div>
+                <div className="group cursor-default">
+                  <p className="text-sm font-semibold bg-gradient-to-r from-red-500 to-rose-600 bg-clip-text text-transparent group-hover:from-red-400 group-hover:to-rose-500 transition-all duration-300">
+                    Penta: {results.penta.length}
+                  </p>
+                </div>
+                <div className="group cursor-default">
+                  <p className="text-sm font-semibold bg-gradient-to-r from-gray-400 to-gray-500 bg-clip-text text-transparent group-hover:from-gray-300 group-hover:to-gray-400 transition-all duration-300">
+                    Denge: {results.denge.length}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="space-y-4">
-              <div className="bg-gradient-to-r from-orange-600 to-orange-600 rounded-lg p-4 text-center">
+              <div className="bg-gradient-to-r from-orange-500 to-amber-600 rounded-lg p-4 text-center shadow-lg shadow-orange-900/30 hover:shadow-orange-900/50 transition-all duration-300">
                 <h3 className="text-xl font-bold text-white">
                   Oksid ({results.oksid.length})
                 </h3>
@@ -266,7 +272,7 @@ const ComparisonTab: React.FC = () => {
                 results.oksid.map((product, idx) => (
                   <div
                     key={idx}
-                    className="bg-gray-900/60 backdrop-blur-sm rounded-lg border border-orange-500/30 p-4 hover:border-orange-500/50 transition-all"
+                    className="bg-gray-900/60 backdrop-blur-sm rounded-lg border border-orange-500/30 p-4 hover:border-orange-500/70 hover:shadow-lg hover:shadow-orange-900/20 transition-all duration-300"
                   >
                     <div className="flex items-start justify-between mb-2 gap-2">
                       <h4 className="font-medium text-gray-100 line-clamp-2 flex-1">
@@ -313,7 +319,7 @@ const ComparisonTab: React.FC = () => {
               )}
             </div>
             <div className="space-y-4">
-              <div className="bg-gradient-to-r from-orange-600 to-orange-600 rounded-lg p-4 text-center">
+              <div className="bg-gradient-to-r from-red-600 to-rose-700 rounded-lg p-4 text-center shadow-lg shadow-red-900/30 hover:shadow-red-900/50 transition-all duration-300">
                 <h3 className="text-xl font-bold text-white">
                   Penta ({results.penta.length})
                 </h3>
@@ -322,7 +328,7 @@ const ComparisonTab: React.FC = () => {
                 results.penta.map((product, idx) => (
                   <div
                     key={idx}
-                    className="bg-gray-900/60 backdrop-blur-sm rounded-lg border border-orange-500/30 p-4 hover:border-red-500/50 transition-all"
+                    className="bg-gray-900/60 backdrop-blur-sm rounded-lg border border-red-500/30 p-4 hover:border-red-500/70 hover:shadow-lg hover:shadow-red-900/20 transition-all duration-300"
                   >
                     <div className="flex items-start justify-between mb-2 gap-2">
                       <h4 className="font-medium text-gray-100 line-clamp-2 flex-1">
@@ -369,7 +375,7 @@ const ComparisonTab: React.FC = () => {
               )}
             </div>
             <div className="space-y-4">
-              <div className="bg-gradient-to-r from-gray-600 to-gray-600 rounded-lg p-4 text-center">
+              <div className="bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg p-4 text-center shadow-lg shadow-gray-900/40 hover:shadow-gray-900/60 transition-all duration-300">
                 <h3 className="text-xl font-bold text-white">
                   Denge ({results.denge.length})
                 </h3>
@@ -378,7 +384,7 @@ const ComparisonTab: React.FC = () => {
                 results.denge.map((product, idx) => (
                   <div
                     key={idx}
-                    className="bg-gray-900/60 backdrop-blur-sm rounded-lg border border-gray-500/30 p-4 hover:border-gray-500/50 transition-all"
+                    className="bg-gray-900/60 backdrop-blur-sm rounded-lg border border-gray-500/30 p-4 hover:border-gray-400/70 hover:shadow-lg hover:shadow-gray-900/20 transition-all duration-300"
                   >
                     <div className="flex items-start justify-between mb-2 gap-2">
                       <h4 className="font-medium text-gray-100 line-clamp-2 flex-1">

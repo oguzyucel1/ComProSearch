@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Eye, Heart, Check, X, ExternalLink } from "lucide-react";
 import type { Product } from "../types";
+import { getTryToUsdRate } from "../utils/exchange";
 
 interface ProductCardProps {
   product: Product;
@@ -11,6 +12,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
   const [isOffered, setIsOffered] = useState(false);
+  const [tryToUsd, setTryToUsd] = useState<number | null>(null);
 
   // Ürünün marketplace bilgisini kullan, yoksa tabType'ı kullan
   const effectiveTabType = product.marketplace || tabType;
@@ -23,6 +25,36 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
     setIsFavorited(favorites.some((fav: Product) => fav.id === product.id));
     setIsOffered(offers.some((offer: Product) => offer.id === product.id));
   }, [product.id]);
+
+  // Fetch TRY -> USD rate (cached)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const rate = await getTryToUsdRate();
+        if (mounted) setTryToUsd(rate);
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Helper: detect try-like currency values
+  const isTRYCurrency = (c?: string | null) => {
+    if (!c) return false;
+    const s = String(c).trim().toLowerCase();
+    return (
+      s === "try" ||
+      s === "tl" ||
+      s === "₺" ||
+      s === "trl" ||
+      s === "tl." ||
+      s === "tl,"
+    );
+  };
 
   // Favorilere ekle/çıkar
   const toggleFavorite = () => {
@@ -250,6 +282,20 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, tabType }) => {
                   {product.currency || "₺"}
                 </p>
               )}
+
+              {/* USD conversion for TRY prices */}
+              {tryToUsd &&
+                (isTRYCurrency(product.currency) ||
+                  (product.priceText && /₺|tl/i.test(product.priceText))) && (
+                  <div className="text-sm text-gray-400 mt-1">
+                    {product.price
+                      ? Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        }).format(product.price * tryToUsd)
+                      : ""}
+                  </div>
+                )}
 
               {/* Price Change Indicator - Only show for favorited/offered products */}
               {(isFavorited || isOffered) &&

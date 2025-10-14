@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>ComProSearch: Enterprise Product Comparison Engine</h1>
+  <h1>SearchPro: Enterprise Product Comparison Engine</h1>
   <p>
     <strong>A high-performance product aggregation and comparison platform designed to unify data from multiple electronics distributors into a single, intuitive interface.</strong>
   </p>

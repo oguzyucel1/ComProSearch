@@ -206,7 +206,7 @@ function App() {
                   <Package className="w-6 h-6 text-white group-hover:rotate-12 transition-transform duration-300" />
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-blue-100 to-orange-200 bg-clip-text text-transparent hover:from-orange-200 hover:via-purple-200 hover:to-blue-200 transition-all duration-500">
-                  ComPro Product Search
+                  SearchPro
                 </h1>
               </div>
               <button
@@ -243,7 +243,7 @@ function App() {
                 <Package className="w-6 h-6 text-white group-hover:rotate-12 transition-transform duration-300" />
               </div>
               <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-orange-100 to-blue-200 bg-clip-text text-transparent hover:from-blue-200 hover:via-purple-200 hover:to-orange-200 transition-all duration-700 hover:scale-105">
-                ComPro Product Search
+                SearchPro
               </h1>
             </div>
             <div className="flex items-center gap-3">
