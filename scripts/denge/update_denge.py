@@ -52,39 +52,76 @@ def get_and_clear_otp(timeout=TIMEOUT_SECONDS, poll_interval=5):
         time.sleep(poll_interval)
     raise TimeoutError(f"🚨 OTP {timeout} saniye içinde Supabase'e yazılmadı, işlem iptal edildi.")
 
-# --- Supabase kayıt (Fiyat Geçmişi ile) ---
+
+# --- Supabase kayıt (Fiyat Geçmişi ile) - YENİ VE VERİMLİ VERSİYON ---
+# --- Supabase kayıt (Fiyat Geçmişi ile) - GÜNCELLENMİŞ VE DÜZELTİLMİŞ VERSİYON ---
 def save_products_to_supabase(products, batch_size=50):
+    """
+    Sadece yeni veya fiyatı değişen ürünleri DB'ye yazar.
+    Okuma işlemini de büyük veri setleri için parçalara böler.
+    """
     if not products or not supabase:
         print("❌ Supabase client eksik veya ürün listesi boş. Kayıt atlandı.")
         return
-    
-    # Önce mevcut ürünleri çek (product_id'lere göre)
+
     product_ids = [p["product_id"] for p in products if p.get("product_id")]
     existing_products = {}
     
+    # Adım 1: Mevcut ürünlerin fiyat bilgilerini DB'den verimli şekilde çek
+    SELECT_CHUNK_SIZE = 900
     if product_ids:
-        try:
-            # Mevcut ürünleri DB'den çek
-            response = supabase.table("denge_products").select("product_id,special_price").in_("product_id", product_ids).execute()
-            existing_products = {item["product_id"]: item for item in response.data}
-            print(f"📊 DB'den {len(existing_products)} mevcut ürün bilgisi alındı.")
-        except Exception as e:
-            print(f"⚠️ Mevcut ürünler çekilirken hata: {e}")
-    
-    for i in range(0, len(products), batch_size):
-        chunk = products[i:i+batch_size]
+        print(f"📊 DB'den {len(product_ids)} ürünün mevcut durumu sorgulanacak...")
+        for i in range(0, len(product_ids), SELECT_CHUNK_SIZE):
+            id_chunk = product_ids[i:i + SELECT_CHUNK_SIZE]
+            try:
+                response = supabase.table("denge_products").select("product_id,special_price").in_("product_id", id_chunk).execute()
+                for item in response.data:
+                    existing_products[item["product_id"]] = item
+                print(f"   -> {len(response.data)} mevcut ürün bilgisi alındı (grup {i//SELECT_CHUNK_SIZE + 1}).")
+            except Exception as e:
+                print(f"⚠️ Mevcut ürünler çekilirken hata (grup {i//SELECT_CHUNK_SIZE + 1}): {e}")
+        print(f"✅ Toplam {len(existing_products)} mevcut ürün bilgisi başarıyla alındı.")
+
+    # Adım 2: Sadece güncellenecek veya eklenecek ürünleri belirle
+    products_to_upsert = []
+    print("\n🔍 Değişiklikler kontrol ediliyor...")
+    for p in products:
+        product_id = p.get("product_id")
+        if not product_id:
+            continue
+
+        # Durum 1: Ürün veritabanında yok (YENİ ÜRÜN)
+        if product_id not in existing_products:
+            print(f"✨ Yeni ürün bulundu: {p['name'][:60]}...")
+            # ÇÖZÜM: Yeni ürüne de 'last_price' alanını None olarak ekliyoruz.
+            p['last_price'] = None
+            products_to_upsert.append(p)
+            continue
         
-        for p in chunk:
-            # Eğer ürün daha önce varsa, eski fiyatı last_price'a aktar
-            if p["product_id"] in existing_products:
-                old_price = existing_products[p["product_id"]].get("special_price")
-                if old_price is not None:
-                    p["last_price"] = old_price
-                    print(f"💰 {p['name'][:50]}... → Eski fiyat: {old_price}, Yeni fiyat: {p.get('special_price')}")
+        # Durum 2: Ürün veritabanında var, fiyatları karşılaştır
+        old_price = existing_products[product_id].get("special_price")
+        new_price = p.get("special_price")
+
+        if old_price is not None and new_price is not None and old_price != new_price:
+            p['last_price'] = old_price
+            print(f"💰 Fiyat Değişti: {p['name'][:60]}... | Eski: {old_price} -> Yeni: {new_price}")
+            products_to_upsert.append(p)
+
+    # Adım 3: Sadece filtrelenmiş listeyi veritabanına yaz
+    if not products_to_upsert:
+        print("\n✅ Veritabanı güncel. Bu kategoride değişiklik veya yeni ürün bulunamadı.")
+        return
         
+    print(f"\n💾 Toplam {len(products_to_upsert)} üründe değişiklik tespit edildi. Veritabanı güncelleniyor...")
+    for i in range(0, len(products_to_upsert), batch_size):
+        chunk = products_to_upsert[i:i+batch_size]
         for attempt in range(3):
             try:
-                data = (supabase.table("denge_products").upsert(chunk, on_conflict="product_id").execute())
+                data = (
+                    supabase.table("denge_products")
+                    .upsert(chunk, on_conflict="product_id")
+                    .execute()
+                )
                 print(f"✅ DB'ye {len(data.data)} ürün yazıldı (chunk {i//batch_size+1})")
                 break
             except Exception as e:
@@ -173,14 +210,13 @@ def scrape_category(page, category_name):
     return all_products
 
 # --- ANA ÇALIŞTIRMA BLOĞU (Proxy Ayarı Eklendi) ---
+# --- ANA ÇALIŞTIRMA BLOĞU (Tekilleştirme Adımı Eklendi) ---
 def run_scraper():
     print("🚀 Edenge Scraper (Doğrudan Veri Çekme Modu) başlıyor...")
     
-    # YENİ: Proxy ayarlarını hazırla
     proxy_config = None
     if PROXY_URL:
         proxy_config = {"server": PROXY_URL}
-        # Loglarda kullanıcı adı/şifre görünmemesi için adresi @ işaretinden sonra alıyoruz
         proxy_host = PROXY_URL.split('@')[-1] if '@' in PROXY_URL else PROXY_URL
         print(f"✅ Proxy yapılandırıldı: {proxy_host}")
     else:
@@ -188,7 +224,6 @@ def run_scraper():
 
     try:
         with sync_playwright() as p:
-            # GÜNCELLENDİ: eden_login fonksiyonuna proxy ayarları iletiliyor
             page, browser = eden_login(p, proxy_settings=proxy_config)
             
             category_elems = page.query_selector_all("a.navigation-categories-item-title")
@@ -204,8 +239,27 @@ def run_scraper():
                 print(f"\n➡️ {i}/{len(categories)}. Kategori Başlatılıyor: {cat_name}")
                 try:
                     page.goto(cat_url, wait_until="networkidle", timeout=60000)
+                    
+                    # 1. Scraper'dan ürünleri çek
                     products = scrape_category(page, cat_name)
+                    
+                    # --- YENİ: TEKİLLEŞTİRME ADIMI ---
                     if products:
+                        print(f"   -> Tekilleştirme öncesi ürün sayısı: {len(products)}")
+                        unique_products = {}
+                        for product in products:
+                            # Her bir ürünü product_id'yi anahtar olarak kullanarak bir sözlüğe ekle.
+                            # Eğer aynı product_id tekrar gelirse, eski kaydın üzerine yazar.
+                            # Bu, listedeki son görülen ürünün geçerli olmasını sağlar.
+                            unique_products[product['product_id']] = product
+                        
+                        # Sözlüğün değerlerini (tekilleştirilmiş ürünleri) tekrar bir listeye çevir.
+                        products = list(unique_products.values())
+                        print(f"   -> Tekilleştirme sonrası ürün sayısı: {len(products)}")
+                    # --- TEKİLLEŞTİRME ADIMI SONU ---
+
+                    if products:
+                        # 2. Sadece tekilleştirilmiş listeyi veritabanına gönder
                         save_products_to_supabase(products)
                     else:
                         print(f"ℹ️ '{cat_name}' kategorisinden hiç ürün çekilemedi.")
