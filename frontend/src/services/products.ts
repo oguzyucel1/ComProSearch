@@ -322,6 +322,11 @@ export async function fetchProductsByTab(
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  // Penta için özel durum: onlyInStock aktifse daha fazla veri çek (client-side filtreleme için)
+  const isPentaWithStockFilter = tab === "penta" && opts?.onlyInStock;
+  const fetchMultiplier = isPentaWithStockFilter ? 10 : 1; // 10x daha fazla veri çek (min 50 stoklu ürün garantisi için)
+  const adjustedTo = isPentaWithStockFilter ? from + (pageSize * fetchMultiplier) - 1 : to;
+
   // Primary fetch with exact count and range
   let query = supabase.from(cfg.table).select(cfg.select, { count: "exact" });
 
@@ -343,6 +348,17 @@ export async function fetchProductsByTab(
     }
   }
 
+  // Server-side stock filtering (Penta hariç - o client-side yapılacak)
+  if (onlyInStock && tab !== "penta") {
+    if (tab === "oksid") {
+      // Oksid: stock NOT IN ('Stokta Yok', 'yok', etc.)
+      query = query.not("stock", "ilike", "%stokta yok%").not("stock", "ilike", "%yok%");
+    } else if (tab === "denge") {
+      // Denge: stock_info > 0
+      query = query.gt("stock_info", 0);
+    }
+  }
+
   // Apply sorting
   if (sort === "price-low") {
     const priceCol =
@@ -354,7 +370,7 @@ export async function fetchProductsByTab(
     query = query.order(priceCol, { ascending: false });
   }
 
-  let { data, error, count } = await query.range(from, to);
+  let { data, error, count } = await query.range(from, adjustedTo);
 
   // Fallback for Penta/Bayinet in case of column mismatch
   if (error && tab === "penta") {
@@ -392,9 +408,46 @@ export async function fetchProductsByTab(
   // Map products
   let items = (data || []).map(cfg.mapper);
   
-  // Client-side filtering for stock if needed
-  if (onlyInStock) {
+  // Client-side filtering for Penta (depot parsing server-side yapılamıyor)
+  if (onlyInStock && tab === "penta") {
     items = items.filter(product => product.inStock);
+    
+    // Eğer yeterli stoklu ürün yoksa, daha fazla veri çek
+    let currentOffset = adjustedTo + 1;
+    const maxAttempts = 5; // Maksimum 5 ek batch
+    let attempts = 0;
+    
+    while (items.length < pageSize && attempts < maxAttempts && currentOffset < (count ?? 0)) {
+      attempts++;
+      const batchSize = pageSize * 10;
+      const batchTo = currentOffset + batchSize - 1;
+      
+      let extraQuery = supabase.from(cfg.table).select(cfg.select);
+      
+      // Aynı filtreleri uygula
+      if (search) {
+        extraQuery = extraQuery.ilike("name", `%${search}%`);
+      }
+      if (category && category !== "all") {
+        const code = resolvePentaCategoryCodeFromDisplay(category);
+        if (code) extraQuery = extraQuery.eq("category_id", code);
+      }
+      if (sort === "price-low") {
+        extraQuery = extraQuery.order("price", { ascending: true });
+      } else if (sort === "price-high") {
+        extraQuery = extraQuery.order("price", { ascending: false });
+      }
+      
+      const { data: extraData } = await extraQuery.range(currentOffset, batchTo);
+      if (!extraData || extraData.length === 0) break;
+      
+      const extraItems = extraData.map(cfg.mapper).filter(product => product.inStock);
+      items = items.concat(extraItems);
+      currentOffset = batchTo + 1;
+    }
+    
+    // İstenen sayıda ürün al
+    items = items.slice(0, pageSize);
   }
 
   return { items, total: count ?? 0 };

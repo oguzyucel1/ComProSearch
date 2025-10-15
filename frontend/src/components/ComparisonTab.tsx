@@ -6,6 +6,78 @@ import { supabase } from "../lib/supabase";
 import WebSearchResultsModal from "./WebSearchResultsModal";
 import { ShoppingResult } from "../types"; // <-- Ortak tipler dosyasından import edildi
 
+// Stok kontrol fonksiyonları (products.ts ile aynı)
+function toBoolStock(val: any): boolean {
+  const s = String(val ?? "")
+    .trim()
+    .toLowerCase();
+
+  if (!s) return true;
+
+  const falsy = new Set([
+    "0",
+    "false",
+    "no",
+    "hayir",
+    "yok",
+    "out",
+    "stok yok",
+    "stokta yok",
+    "yoktur",
+    "stok bulunmamaktadır",
+    "mevcut değil",
+  ]);
+
+  return !falsy.has(s);
+}
+
+function toBoolStockBayinet(val: any): boolean {
+  const s = String(val ?? "").trim();
+
+  if (!s) return true;
+
+  const depots = s.split("|").map((d) => d.trim());
+  let totalStock = 0;
+
+  for (const depot of depots) {
+    const match = depot.match(/[(\(](\d+)[)\)]/);
+    if (match && match[1]) {
+      totalStock += parseInt(match[1], 10);
+    }
+  }
+
+  return totalStock > 0;
+}
+
+function toBoolStockDenge(val: any): boolean {
+  if (val === null || val === undefined) return false;
+
+  const stockNum = Number(val);
+
+  if (!isNaN(stockNum)) {
+    return stockNum > 0;
+  }
+
+  const s = String(val).trim().toLowerCase();
+  if (!s) return false;
+
+  const falsy = new Set([
+    "0",
+    "false",
+    "no",
+    "hayir",
+    "yok",
+    "out",
+    "stok yok",
+    "stokta yok",
+    "yoktur",
+    "stok bulunmamaktadır",
+    "mevcut değil",
+  ]);
+
+  return !falsy.has(s);
+}
+
 // Tipler ve Interface'ler
 interface ComparisonResult {
   marketplace: string;
@@ -64,22 +136,8 @@ const ComparisonTab: React.FC = () => {
         .ilike("name", `%${searchTerm}%`);
 
       const oksidResults: ComparisonResult[] = (oksidData || []).map((item) => {
-        // Oksid stok kontrolü: "Stokta Yok" string kontrolü
-        const stockInfo = String(item.stock || "")
-          .trim()
-          .toLowerCase();
-        const falsy = new Set([
-          "0",
-          "false",
-          "no",
-          "hayir",
-          "yok",
-          "out",
-          "stok yok",
-          "stokta yok",
-          "yoktur",
-        ]);
-        const available = stockInfo ? !falsy.has(stockInfo) : true;
+        // Oksid stok kontrolü: toBoolStock fonksiyonu ile
+        const available = toBoolStock(item.stock);
 
         return {
           marketplace: "Oksid",
@@ -97,23 +155,8 @@ const ComparisonTab: React.FC = () => {
         .ilike("name", `%${searchTerm}%`);
 
       const pentaResults: ComparisonResult[] = (pentaData || []).map((item) => {
-        // Bayinet stok kontrolü: Merkez(X) formatından toplam stok hesapla
-        const stockInfo = String(item.stock_info || "").trim();
-        let available = true;
-
-        if (stockInfo) {
-          const depots = stockInfo.split("|").map((d) => d.trim());
-          let totalStock = 0;
-
-          for (const depot of depots) {
-            const match = depot.match(/[(\(](\d+)[)\)]/);
-            if (match && match[1]) {
-              totalStock += parseInt(match[1], 10);
-            }
-          }
-
-          available = totalStock > 0;
-        }
+        // Bayinet stok kontrolü: toBoolStockBayinet fonksiyonu ile
+        const available = toBoolStockBayinet(item.stock_info);
 
         return {
           marketplace: "Penta",
@@ -136,9 +179,8 @@ const ComparisonTab: React.FC = () => {
         .ilike("name", `%${searchTerm}%`);
 
       const dengeResults: ComparisonResult[] = (dengeData || []).map((item) => {
-        // Denge stok kontrolü: sayısal değer, 0'dan büyükse stokta var
-        const stockNum = Number(item.stock_info);
-        const available = !isNaN(stockNum) ? stockNum > 0 : false;
+        // Denge stok kontrolü: toBoolStockDenge fonksiyonu ile
+        const available = toBoolStockDenge(item.stock_info);
 
         return {
           marketplace: "Denge",

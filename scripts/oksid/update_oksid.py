@@ -52,45 +52,100 @@ def clean_price(price_text):
     try: return float(cleaned_text)
     except: return None
 
+# --- GÜNCELLENMİŞ SUPABASE KAYDETME FONKSİYONU (SADECE TERMİNAL LOGLAMA) ---
 def save_to_supabase(products, category_name, batch_size=50):
-    if not products or not supabase: return
+    """
+    Sadece yeni veya fiyatı/stok durumu değişen ürünleri DB'ye yazar.
+    Tüm değişiklikleri terminale loglar.
+    """
+    if not products or not supabase:
+        print("❌ Supabase client eksik veya ürün listesi boş. Kayıt atlandı.")
+        return
+
     product_urls = [p["url"] for p in products if p.get("url")]
     existing_products = {}
-    SELECT_CHUNK_SIZE = 900 
+    
+    # Adım 1: Mevcut ürünleri DB'den verimli şekilde çek
+    # Sunucu URL limiti hatasını (400 Bad Request) önlemek için chunk boyutu küçüktür.
+    SELECT_CHUNK_SIZE = 50 
+    
     if product_urls:
-        print(f"    📊 DB'den {len(product_urls)} ürünün mevcut durumu sorgulanacak...")
+        print(f"📊 DB'den {len(product_urls)} ürünün mevcut durumu sorgulanacak...")
         for i in range(0, len(product_urls), SELECT_CHUNK_SIZE):
             url_chunk = product_urls[i:i + SELECT_CHUNK_SIZE]
             try:
                 response = supabase.table("oksid_products").select("url, price_1, stock").in_("url", url_chunk).execute()
-                for item in response.data: existing_products[item["url"]] = item
-            except Exception as e: print(f"    ⚠️ Mevcut ürünler çekilirken hata: {e}")
+                for item in response.data:
+                    existing_products[item["url"]] = item
+                print(f"   -> {len(response.data)} mevcut ürün bilgisi alındı (grup {i//SELECT_CHUNK_SIZE + 1}).")
+            except Exception as e:
+                print(f"⚠️ Mevcut ürünler çekilirken hata (grup {i//SELECT_CHUNK_SIZE + 1}): {e}")
+        print(f"✅ Toplam {len(existing_products)} mevcut ürün bilgisi başarıyla alındı.")
+
+    # Adım 2: Değişiklikleri belirle ve terminale yazdır
     products_to_upsert = []
+    print("\n🔍 Değişiklikler kontrol ediliyor...")
     for p in products:
         url = p.get("url")
-        if not url: continue
+        if not url:
+            continue
+
+        # Durum 1: Yeni ürün
         if url not in existing_products:
+            print(f"✨ Yeni ürün bulundu: {p['name'][:60]}...")
             p['last_price'] = None
             products_to_upsert.append(p)
             continue
+        
+        # Durum 2: Mevcut ürün, fiyat ve stok karşılaştır
         existing_product = existing_products[url]
-        old_price, new_price = existing_product.get("price_1"), p.get("price_1")
-        old_stock, new_stock = existing_product.get("stock"), p.get("stock")
+        old_price = existing_product.get("price_1")
+        new_price = p.get("price_1")
+        old_stock = existing_product.get("stock")
+        new_stock = p.get("stock")
+
         price_has_changed = (old_price is not None and new_price is not None and old_price != new_price)
         stock_has_changed = (old_stock is not None and new_stock is not None and old_stock != new_stock)
+
         if price_has_changed or stock_has_changed:
-            p['last_price'] = old_price
+            change_reasons = []
+            if price_has_changed:
+                p['last_price'] = old_price
+                change_reasons.append(f"Fiyat: {old_price} -> {new_price}")
+            else:
+                p['last_price'] = old_price
+            
+            if stock_has_changed:
+                change_reasons.append(f"Stok: '{old_stock}' -> '{new_stock}'")
+
+            log_message = " | ".join(change_reasons)
+            print(f"🔄 Güncelleme: {p['name'][:50]}... | {log_message}")
             products_to_upsert.append(p)
+
+    # Adım 3: Sadece filtrelenmiş listeyi veritabanına yaz
     if not products_to_upsert:
-        print(f"    ✅ Veritabanı güncel. '{category_name}' için değişiklik yok.")
+        print(f"\n✅ Veritabanı güncel. '{category_name}' kategorisinde değişiklik veya yeni ürün bulunamadı.")
         return
-    print(f"    💾 '{category_name}' için {len(products_to_upsert)} değişiklik DB'ye yazılıyor...")
+        
+    print(f"\n💾 '{category_name}' kategorisinde {len(products_to_upsert)} değişiklik tespit edildi. Veritabanı güncelleniyor...")
     for p in products_to_upsert:
-        p.update({"marketplace": "oksid", "last_updated": time.strftime("%Y-%m-%d %H:%M:%S")})
+        p["marketplace"] = "oksid"
+        p["last_updated"] = time.strftime("%Y-%m-%d %H:%M:%S")
+
     for i in range(0, len(products_to_upsert), batch_size):
         chunk = products_to_upsert[i:i+batch_size]
-        try: supabase.table("oksid_products").upsert(chunk, on_conflict="url").execute()
-        except Exception as e: print(f"    ⚠️ Supabase yazma hatası: {e}")
+        for attempt in range(3):
+            try:
+                data = (
+                    supabase.table("oksid_products")
+                    .upsert(chunk, on_conflict="url")
+                    .execute()
+                )
+                print(f"✅ DB'ye {len(data.data)} ürün yazıldı (chunk {i//batch_size+1})")
+                break
+            except Exception as e:
+                print(f"⚠️ Supabase error (chunk {i//batch_size+1}), retry {attempt+1}/3: {e}")
+                time.sleep(5)
 
 # --- FİNAL HİYERARŞİK TARAMA SİSTEMİ ---
 def crawl_category_tree(url, category_path, visited_urls):
